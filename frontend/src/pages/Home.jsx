@@ -20,14 +20,24 @@ import {
   Shirt,
   Footprints,
   Home as HomeIcon,
-  Layers
+  Layers,
+  Loader2,
+  X
 } from "lucide-react";
-import { products, calculateFinalPrice } from "../data/products";
+import API from "../api/axios";
+import { calculateFinalPrice } from "../utils/productUtils";
 import ProductCard from "../components/ProductCard";
 import HeroCarousel from "../components/HeroCarousel";
 
-// Section Carousel for Card-Enclosed Deals
-function SectionCardCarousel({ title, subtitle, badgeText, badgeColor, items = [], viewAllLink = "/products" }) {
+// Section Carousel for Card-Enclosed Deals (Supports touch, auto-play & smooth sliding)
+function SectionCardCarousel({
+  title,
+  subtitle,
+  badgeText,
+  badgeColor,
+  items = [],
+  viewAllLink = "/products"
+}) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsPerView, setItemsPerView] = useState(4);
   const [isPaused, setIsPaused] = useState(false);
@@ -80,7 +90,9 @@ function SectionCardCarousel({ title, subtitle, badgeText, badgeColor, items = [
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
         <div>
-          <span className={`inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider text-white shadow-sm ${badgeColor}`}>
+          <span
+            className={`inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider text-white shadow-sm ${badgeColor}`}
+          >
             <Sparkles className="w-3 h-3" />
             <span>{badgeText}</span>
           </span>
@@ -100,13 +112,13 @@ function SectionCardCarousel({ title, subtitle, badgeText, badgeColor, items = [
           </Link>
           <button
             onClick={handlePrev}
-            className="w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-pink-600 hover:border-pink-600 flex items-center justify-center shadow-sm active:scale-95 transition"
+            className="w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-pink-600 hover:border-pink-600 flex items-center justify-center shadow-sm active:scale-95 transition cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={handleNext}
-            className="w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-pink-600 hover:border-pink-600 flex items-center justify-center shadow-sm active:scale-95 transition"
+            className="w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-pink-600 hover:border-pink-600 flex items-center justify-center shadow-sm active:scale-95 transition cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -116,11 +128,13 @@ function SectionCardCarousel({ title, subtitle, badgeText, badgeColor, items = [
       <div className="overflow-hidden py-1">
         <div
           className="flex transition-transform duration-500 ease-out"
-          style={{ transform: `translateX(-${currentIndex * (100 / itemsPerView)}%)` }}
+          style={{
+            transform: `translateX(-${currentIndex * (100 / itemsPerView)}%)`
+          }}
         >
           {items.map((prod) => (
             <div
-              key={prod.id}
+              key={prod._id || prod.id}
               className="shrink-0 px-2 box-border"
               style={{ width: `${100 / itemsPerView}%` }}
             >
@@ -134,6 +148,10 @@ function SectionCardCarousel({ title, subtitle, badgeText, badgeColor, items = [
 }
 
 export default function Home() {
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [maxPrice, setMaxPrice] = useState(5000);
@@ -148,46 +166,113 @@ export default function Home() {
     { name: "Home", icon: HomeIcon, gradient: "from-emerald-500 to-teal-500" }
   ];
 
-  const trendingProducts = useMemo(() => products.filter((p) => p.isTrending || p.rating >= 4.5), []);
-  const offerProducts = useMemo(() => products.filter((p) => p.discount >= 25), []);
-  const bestBuyProducts = useMemo(() => {
-    return products.filter((p) => {
-      const final = calculateFinalPrice(p.price, p.discount);
-      return final <= 2500 && p.rating >= 4.2;
-    });
+  // 1. Fetch Dynamic Products from Backend
+  useEffect(() => {
+    const fetchHomeProducts = async () => {
+      try {
+        setLoading(true);
+        const res = await API.get("/products");
+        const list = res.data?.data || [];
+        setAllProducts(list);
+
+        if (list.length > 0) {
+          const highestPrice = Math.max(...list.map((p) => p.price));
+          if (highestPrice > 5000) {
+            setMaxPrice(highestPrice);
+          }
+        }
+      } catch (err) {
+        console.error("Home products fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHomeProducts();
   }, []);
 
+  // 2. Instant Search Filter (Jab user search bar me type kare)
+  const isSearching = searchTerm.trim().length > 0;
+
+  const instantSearchResults = useMemo(() => {
+    if (!isSearching) return [];
+    const query = searchTerm.toLowerCase().trim();
+
+    return allProducts.filter((prod) => {
+      const nameMatch = prod.name?.toLowerCase().includes(query);
+      const catMatch = prod.category?.toLowerCase().includes(query);
+      const descMatch = prod.description?.toLowerCase().includes(query);
+      return nameMatch || catMatch || descMatch;
+    });
+  }, [allProducts, searchTerm, isSearching]);
+
+  // 3. Dynamic Random Deals for Carousels (Shuffled on each load)
+  const trendingProducts = useMemo(() => {
+    if (!allProducts.length) return [];
+    const list = allProducts.filter((p) => p.isTrending || p.rating >= 4.3);
+    const pool = list.length >= 4 ? list : allProducts;
+    return [...pool].sort(() => 0.5 - Math.random()).slice(0, 8);
+  }, [allProducts]);
+
+  const offerProducts = useMemo(() => {
+    if (!allProducts.length) return [];
+    const list = allProducts.filter((p) => (p.discount || 0) >= 15);
+    const pool = list.length >= 4 ? list : allProducts;
+    return [...pool].sort(() => 0.5 - Math.random()).slice(0, 8);
+  }, [allProducts]);
+
+  const bestBuyProducts = useMemo(() => {
+    if (!allProducts.length) return [];
+    const list = allProducts.filter((p) => {
+      const final = calculateFinalPrice(p.price, p.discount);
+      return final <= 3000;
+    });
+    const pool = list.length >= 4 ? list : allProducts;
+    return [...pool].sort(() => 0.5 - Math.random()).slice(0, 8);
+  }, [allProducts]);
+
+  // 4. Catalogue Explorer Filters
   const filteredProducts = useMemo(() => {
-    let result = products.filter((prod) => {
+    let result = allProducts.filter((prod) => {
       const finalPrice = calculateFinalPrice(prod.price, prod.discount);
-      const matchesSearch = prod.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === "All" || prod.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === "All" || prod.category === selectedCategory;
       const matchesPrice = finalPrice <= maxPrice;
       const matchesTab =
-        activeTab === "all" ? true : activeTab === "trending" ? prod.isTrending : prod.isRecent;
+        activeTab === "all"
+          ? true
+          : activeTab === "trending"
+          ? prod.isTrending || prod.rating >= 4.5
+          : prod.isRecent;
 
-      return matchesSearch && matchesCategory && matchesPrice && matchesTab;
+      return matchesCategory && matchesPrice && matchesTab;
     });
 
     if (sortBy === "low-to-high") {
-      result.sort((a, b) => calculateFinalPrice(a.price, a.discount) - calculateFinalPrice(b.price, b.discount));
+      result.sort(
+        (a, b) =>
+          calculateFinalPrice(a.price, a.discount) -
+          calculateFinalPrice(b.price, b.discount)
+      );
     } else if (sortBy === "high-to-low") {
-      result.sort((a, b) => calculateFinalPrice(b.price, b.discount) - calculateFinalPrice(a.price, a.discount));
+      result.sort(
+        (a, b) =>
+          calculateFinalPrice(b.price, b.discount) -
+          calculateFinalPrice(a.price, a.discount)
+      );
     } else if (sortBy === "rating") {
       result.sort((a, b) => b.rating - a.rating);
     }
 
     return result;
-  }, [searchTerm, selectedCategory, maxPrice, activeTab, sortBy]);
+  }, [allProducts, selectedCategory, maxPrice, activeTab, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-8">
-      
       {/* ======================================================== */}
       {/* 1. TOP HEADER: SMART SEARCHBAR & INTERACTIVE CATEGORIES */}
       {/* ======================================================== */}
       <div className="bg-white/95 backdrop-blur-xl p-4 sm:p-6 rounded-3xl border border-white/80 shadow-xl shadow-pink-500/5 space-y-5">
-        
         {/* Glowing Search Bar */}
         <div className="relative">
           <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
@@ -201,7 +286,7 @@ export default function Home() {
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 transition"
+              className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 transition cursor-pointer"
             >
               <XCircle className="w-5 h-5" />
             </button>
@@ -217,7 +302,7 @@ export default function Home() {
               <button
                 key={cat.name}
                 onClick={() => setSelectedCategory(cat.name)}
-                className="flex flex-col items-center space-y-1.5 shrink-0 group focus:outline-none"
+                className="flex flex-col items-center space-y-1.5 shrink-0 group focus:outline-none cursor-pointer"
               >
                 <div
                   className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center p-[2px] transition-all duration-300 ${
@@ -258,9 +343,9 @@ export default function Home() {
             </span>
             <input
               type="range"
-              min="500"
-              max="5000"
-              step="250"
+              min="200"
+              max="20000"
+              step="200"
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="accent-pink-600 w-28 sm:w-40 cursor-pointer ml-2"
@@ -272,7 +357,7 @@ export default function Home() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-gray-50 border border-gray-200 py-1.5 px-3 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-pink-500/20"
+              className="bg-gray-50 border border-gray-200 py-1.5 px-3 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-pink-500/20 cursor-pointer"
             >
               <option value="featured">Sort: Featured</option>
               <option value="low-to-high">Price: Low to High</option>
@@ -283,13 +368,65 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 2. HERO SLIDER BANNER                                    */}
-      {/* ======================================================== */}
-      <HeroCarousel />
+      {/* ========================================================================= */}
+      {/* 2. DYNAMIC INSTANT SEARCH RESULTS BLOCK (Search karte hi turant dikhega)  */}
+      {/* ========================================================================= */}
+      {isSearching && (
+        <div className="bg-white/95 backdrop-blur-xl p-5 sm:p-8 rounded-3xl border border-pink-100 shadow-xl shadow-pink-500/10 space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+            <div>
+              <span className="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-pink-50 text-pink-600">
+                <Search className="w-3 h-3" />
+                <span>Instant Search Results</span>
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 mt-1.5">
+                Results for &ldquo;<span className="text-pink-600">{searchTerm}</span>&rdquo; (
+                {instantSearchResults.length})
+              </h2>
+            </div>
+
+            <button
+              onClick={() => setSearchTerm("")}
+              className="self-start sm:self-auto inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Clear Search</span>
+            </button>
+          </div>
+
+          {instantSearchResults.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <Zap className="w-10 h-10 text-amber-500 mx-auto" />
+              <h3 className="text-base font-bold text-gray-900">
+                &ldquo;{searchTerm}&rdquo; ke liye koi product nahi mila
+              </h3>
+              <p className="text-xs text-gray-500">
+                Spelling check karein ya dusra keyword use karein.
+              </p>
+              <button
+                onClick={() => setSearchTerm("")}
+                className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-500 text-white rounded-xl shadow-md cursor-pointer"
+              >
+                Clear Search
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {instantSearchResults.map((product) => (
+                <ProductCard key={product._id || product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ======================================================== */}
-      {/* 3. ASSURANCE & BENEFITS BAR                              */}
+      {/* 3. DYNAMIC HERO SLIDER BANNER                            */}
+      {/* ======================================================== */}
+      <HeroCarousel products={allProducts} />
+
+      {/* ======================================================== */}
+      {/* 4. ASSURANCE & BENEFITS BAR                              */}
       {/* ======================================================== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
         <div className="flex items-center space-x-3 p-2">
@@ -322,41 +459,57 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 4. PRODUCT CAROUSEL 1: MOST TRENDING PRODUCTS CARD       */}
-      {/* ======================================================== */}
-      <SectionCardCarousel
-        title="Most Trending & Popular"
-        subtitle="Customer ke dwara iss hafte sabse zyada order kiye gaye products"
-        badgeText="Trending Now"
-        badgeColor="bg-gradient-to-r from-orange-500 to-amber-500"
-        items={trendingProducts}
-      />
+      {/* Loading Indicator */}
+      {loading && (
+        <div className="bg-white p-10 rounded-3xl border border-gray-100 flex flex-col items-center justify-center space-y-2">
+          <Loader2 className="w-8 h-8 text-pink-600 animate-spin" />
+          <p className="text-xs font-bold text-gray-500">
+            Connecting to dynamic inventory...
+          </p>
+        </div>
+      )}
 
       {/* ======================================================== */}
-      {/* 5. PRODUCT CAROUSEL 2: SUPER OFFERS & DEALS CARD         */}
+      {/* 5. PRODUCT CAROUSEL 1: MOST TRENDING PRODUCTS CARD       */}
       {/* ======================================================== */}
-      <SectionCardCarousel
-        title="Mega Discounts & Flash Deals"
-        subtitle="Exclusive festive savings - Flat 25% se 50% off"
-        badgeText="Mega Offers"
-        badgeColor="bg-gradient-to-r from-pink-500 to-rose-600"
-        items={offerProducts}
-      />
+      {trendingProducts.length > 0 && (
+        <SectionCardCarousel
+          title="Most Trending & Popular"
+          subtitle="Customer ke dwara iss hafte sabse zyada order kiye gaye products"
+          badgeText="Trending Now"
+          badgeColor="bg-gradient-to-r from-orange-500 to-amber-500"
+          items={trendingProducts}
+        />
+      )}
 
       {/* ======================================================== */}
-      {/* 6. PRODUCT CAROUSEL 3: BEST BUY / VALUE PICKS CARD       */}
+      {/* 6. PRODUCT CAROUSEL 2: SUPER OFFERS & DEALS CARD         */}
       {/* ======================================================== */}
-      <SectionCardCarousel
-        title="Best Buy Under Budget"
-        subtitle="Pocket-friendly prices par high rated genuine picks"
-        badgeText="Best Value"
-        badgeColor="bg-gradient-to-r from-violet-600 to-indigo-600"
-        items={bestBuyProducts}
-      />
+      {offerProducts.length > 0 && (
+        <SectionCardCarousel
+          title="Mega Discounts & Flash Deals"
+          subtitle="Exclusive festive savings - Flat instant price drops"
+          badgeText="Mega Offers"
+          badgeColor="bg-gradient-to-r from-pink-500 to-rose-600"
+          items={offerProducts}
+        />
+      )}
 
       {/* ======================================================== */}
-      {/* 7. ALL PRODUCTS EXPLORER CARD (TABS & LIVE GRID)         */}
+      {/* 7. PRODUCT CAROUSEL 3: BEST BUY / VALUE PICKS CARD       */}
+      {/* ======================================================== */}
+      {bestBuyProducts.length > 0 && (
+        <SectionCardCarousel
+          title="Best Buy Under Budget"
+          subtitle="Pocket-friendly prices par high rated genuine picks"
+          badgeText="Best Value"
+          badgeColor="bg-gradient-to-r from-violet-600 to-indigo-600"
+          items={bestBuyProducts}
+        />
+      )}
+
+      {/* ======================================================== */}
+      {/* 8. ALL PRODUCTS EXPLORER CARD (TABS & LIVE GRID)         */}
       {/* ======================================================== */}
       <div className="bg-white/95 backdrop-blur-xl p-5 sm:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-pink-500/5 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
@@ -374,7 +527,7 @@ export default function Home() {
           <div className="flex items-center space-x-2 bg-gray-100 p-1.5 rounded-2xl self-start sm:self-auto">
             <button
               onClick={() => setActiveTab("all")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === "all"
                   ? "bg-white text-pink-600 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -384,7 +537,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab("trending")}
-              className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === "trending"
                   ? "bg-white text-orange-500 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -395,7 +548,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab("recent")}
-              className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === "recent"
                   ? "bg-white text-emerald-600 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -408,19 +561,18 @@ export default function Home() {
         </div>
 
         {/* Filtered Grid Output */}
-        {filteredProducts.length === 0 ? (
+        {filteredProducts.length === 0 && !loading ? (
           <div className="py-16 text-center space-y-3">
             <Zap className="w-10 h-10 text-amber-500 mx-auto" />
             <h3 className="text-base font-bold text-gray-900">Koi product match nahi hua</h3>
             <p className="text-xs text-gray-500">Filter criteria reset karke dekhein.</p>
             <button
               onClick={() => {
-                setSearchTerm("");
                 setSelectedCategory("All");
                 setMaxPrice(5000);
                 setActiveTab("all");
               }}
-              className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-500 text-white rounded-xl shadow-md shadow-pink-500/20 active:scale-95"
+              className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-violet-600 to-pink-500 text-white rounded-xl shadow-md shadow-pink-500/20 active:scale-95 cursor-pointer"
             >
               Reset All Filters
             </button>
@@ -428,12 +580,11 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product._id || product.id} product={product} />
             ))}
           </div>
         )}
       </div>
-
     </div>
   );
 }

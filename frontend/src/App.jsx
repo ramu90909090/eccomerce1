@@ -8,7 +8,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./components/admin/AdminLayout";
-
+import { SettingsProvider } from "./context/SettingsContext";
 // Public Pages
 import Home from "./pages/Home";
 import Products from "./pages/Products";
@@ -26,10 +26,14 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AboutPageCms from "./pages/admin/AboutPageCms";
 import ContactPageCms from "./pages/admin/ContactPageCms";
 import ContactInquiries from "./pages/admin/ContactInquiries";
+import ManageProducts from "./pages/admin/ManageProducts";
+import HeaderFooterCms from "./pages/admin/HeaderFooterCms";
+
 
 export default function App() {
   return (
     <AuthProvider>
+      <SettingsProvider>
       <CartProvider>
         <Router>
           <Routes>
@@ -44,10 +48,12 @@ export default function App() {
             >
               <Route index element={<AdminDashboard />} />
               <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="products" element={<ManageProducts />} /> {/* <-- Add this */}
               <Route path="about-cms" element={<AboutPageCms />} />
               <Route path="contact-cms" element={<ContactPageCms />} />
               <Route path="contact-inquiries" element={<ContactInquiries />} />
-             
+             <Route path="header-footer-cms" element={<HeaderFooterCms />} />
+
             </Route>
 
             {/* 2. Public Storefront Layout */}
@@ -86,6 +92,7 @@ export default function App() {
           </Routes>
         </Router>
       </CartProvider>
+      </SettingsProvider>
     </AuthProvider>
   );
 }

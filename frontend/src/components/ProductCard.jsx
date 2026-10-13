@@ -1,108 +1,154 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Star, ShoppingBag, ShieldCheck, Zap } from "lucide-react";
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Star, ShoppingBag, Eye, Zap, Layers } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { calculateFinalPrice, getImageUrl } from "../utils/productUtils";
 
 export default function ProductCard({ product }) {
-  const { addToCart } = useCart();
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const { addToCart, setCheckoutItem } = useCart();
+  const navigate = useNavigate();
 
-  // Normalize Images Array
-  const images = product.images?.length
-    ? product.images.map((img) => (typeof img === "string" ? img : img.url))
-    : [product.image || "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80"];
+  if (!product) return null;
 
-  const id = product._id || product.id;
-  const sellingPrice = product.sellingPrice || product.price || 0;
-  const actualPrice = product.actualPrice || (product.price ? product.price * 1.3 : 0);
-  const discount = product.discount || (actualPrice > sellingPrice ? Math.round(((actualPrice - sellingPrice) / actualPrice) * 100) : 0);
+  const productId = product._id || product.id;
+  const finalPrice = calculateFinalPrice(product.price, product.discount);
+  const fallbackImg = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80";
+
+  // First image for thumbnail display
+  const primaryImage =
+    Array.isArray(product.images) && product.images.length > 0
+      ? product.images[0]
+      : product.image || fallbackImg;
+
+  const imageCount = Array.isArray(product.images) ? product.images.length : 1;
+
+  const handleBuyNow = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCheckoutItem({
+      ...product,
+      id: productId,
+      _id: productId,
+      image: primaryImage,
+      quantity: 1,
+      finalPrice
+    });
+    navigate("/payment");
+  };
+
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart({
+      ...product,
+      id: productId,
+      _id: productId,
+      image: primaryImage,
+      finalPrice
+    });
+  };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col justify-between h-full group hover:shadow-xl transition-all duration-300">
-      <div className="relative overflow-hidden bg-slate-50 h-52 sm:h-56">
-        {/* Main Display Image */}
-        <Link to={`/product/${id}`}>
-          <img
-            src={images[activeImageIndex] || images[0]}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        </Link>
-
-        {/* Discount Badge */}
-        {discount > 0 && (
-          <span className="absolute top-2.5 left-2.5 bg-gradient-to-r from-pink-600 to-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase">
-            {discount}% OFF
+    <div className="group relative bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden h-full">
+      {/* Top Badges */}
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+        {product.discount > 0 && (
+          <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black text-[10px] px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
+            {product.discount}% OFF
           </span>
         )}
-
-        {/* Trending Tag */}
         {product.isTrending && (
-          <span className="absolute top-2.5 right-2.5 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-sm flex items-center space-x-0.5">
-            <Zap className="w-3 h-3 fill-current" />
-            <span>Hot</span>
+          <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+            Trending
           </span>
-        )}
-
-        {/* Multi-Image Hover Dots preview */}
-        {images.length > 1 && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {images.slice(0, 5).map((_, i) => (
-              <button
-                key={i}
-                onMouseEnter={() => setActiveImageIndex(i)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  activeImageIndex === i ? "bg-pink-600 w-4" : "bg-white/80"
-                }`}
-              />
-            ))}
-          </div>
         )}
       </div>
 
-      {/* Details Area */}
-      <div className="p-4 flex flex-col flex-1 justify-between space-y-3">
+      {/* Image Count indicator */}
+      {imageCount > 1 && (
+        <div className="absolute top-3 right-3 z-10 flex items-center space-x-1 bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
+          <Layers className="w-3 h-3" />
+          <span>{imageCount} photos</span>
+        </div>
+      )}
+
+      {/* Image Container */}
+      <div className="relative overflow-hidden bg-gray-50 aspect-square">
+        <Link to={`/product/${productId}`}>
+          <img
+            src={getImageUrl(primaryImage)}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = fallbackImg;
+            }}
+          />
+        </Link>
+        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2 pointer-events-none">
+          <Link
+            to={`/product/${productId}`}
+            className="pointer-events-auto p-2.5 bg-white/95 rounded-2xl text-gray-700 hover:text-pink-600 shadow-md transform translate-y-4 group-hover:translate-y-0 transition-all duration-300"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
         <div>
-          <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
-            <span className="font-bold uppercase tracking-wider text-violet-600">{product.category}</span>
-            <span className="flex items-center space-x-1 text-amber-500 font-bold">
-              <Star className="w-3 h-3 fill-amber-400" />
-              <span>{product.rating || 4.5}</span>
+          <div className="flex items-center justify-between text-[11px] mb-1.5 font-bold">
+            <span className="text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md uppercase tracking-wider">
+              {product.category}
             </span>
+            <div className="flex items-center space-x-1 text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-md">
+              <Star className="w-3 h-3 fill-current" />
+              <span>{product.rating ? Number(product.rating).toFixed(1) : "4.0"}</span>
+            </div>
           </div>
 
-          <Link to={`/product/${id}`}>
-            <h3 className="text-xs sm:text-sm font-bold text-gray-900 line-clamp-2 hover:text-pink-600 transition">
+          <Link to={`/product/${productId}`}>
+            <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-pink-600 transition-colors line-clamp-1">
               {product.name}
             </h3>
           </Link>
+          <p className="text-[11px] text-gray-500 line-clamp-2 mt-1 leading-relaxed">
+            {product.description}
+          </p>
         </div>
 
-        <div>
-          {/* Price & Stock */}
-          <div className="flex items-baseline space-x-2">
-            <span className="text-base sm:text-lg font-black text-gray-900">
-              ₹{sellingPrice.toLocaleString()}
+        {/* Pricing & CTA */}
+        <div className="pt-2 border-t border-gray-100">
+          <div className="flex items-baseline space-x-2 mb-3">
+            <span className="text-base font-black text-gray-900">
+              ₹{finalPrice.toLocaleString()}
             </span>
-            {actualPrice > sellingPrice && (
+            {product.discount > 0 && (
               <span className="text-xs text-gray-400 line-through">
-                ₹{actualPrice.toLocaleString()}
+                ₹{Number(product.price).toLocaleString()}
               </span>
             )}
           </div>
 
-          <p className="text-[10px] text-emerald-600 font-bold mt-0.5 flex items-center space-x-1">
-            <ShieldCheck className="w-3 h-3" />
-            <span>{product.warranty || "Genuine Guarantee"}</span>
-          </p>
-
-          <button
-            onClick={() => addToCart({ ...product, price: sellingPrice, image: images[0] })}
-            className="mt-3 w-full py-2.5 bg-gradient-to-r from-violet-600 to-pink-500 hover:from-violet-700 hover:to-pink-600 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider shadow-md shadow-pink-500/20 active:scale-95 transition flex items-center justify-center space-x-1.5"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Add to Cart</span>
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleAddToCart}
+              className="w-full py-2 px-2 bg-gray-100 hover:bg-pink-50 text-gray-700 hover:text-pink-600 font-bold rounded-xl text-xs flex items-center justify-center space-x-1 active:scale-95 transition"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Cart</span>
+            </button>
+            <button
+              onClick={handleBuyNow}
+              className="w-full py-2 px-2 bg-gradient-to-r from-violet-600 to-pink-500 hover:opacity-95 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1 shadow-md shadow-pink-500/15 active:scale-95 transition"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Buy</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

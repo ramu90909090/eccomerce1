@@ -18,11 +18,14 @@ import {
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
+import { getImageUrl } from "../utils/productUtils";
 import ProfileModal from "./ProfileModal";
 
 export default function Navbar() {
   const { cart } = useCart();
   const { user, logoutUser } = useAuth();
+  const { settings } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,7 +33,8 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const totalItems = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
-  // Click outside to close dropdown
+  const navConfig = settings?.navbar || {};
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -41,7 +45,6 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Desktop link styling
   const getDesktopNavLinkClass = ({ isActive }) =>
     `relative px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 flex items-center space-x-1.5 ${
       isActive
@@ -49,7 +52,6 @@ export default function Navbar() {
         : "text-slate-700 hover:text-pink-600 hover:bg-white/60"
     }`;
 
-  // Mobile link styling
   const getMobileNavLinkClass = ({ isActive }) =>
     `flex items-center space-x-3 p-3 rounded-2xl text-sm font-bold transition-all duration-200 ${
       isActive
@@ -62,20 +64,27 @@ export default function Navbar() {
       <nav className="sticky top-0 z-50 bg-gradient-to-r from-violet-50/90 via-pink-50/80 to-amber-50/90 backdrop-blur-xl border-b border-white/60 shadow-lg shadow-pink-500/5 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
-            
-            {/* Brand Logo */}
+            {/* Dynamic Brand Logo & Titles */}
             <Link to="/" className="flex items-center space-x-2.5 group">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[2px] shadow-lg shadow-pink-500/30 group-hover:scale-105 transition-transform duration-300">
-                <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-pink-500 group-hover:rotate-12 transition-transform duration-300" />
+                <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center overflow-hidden">
+                  {navConfig.logoUrl ? (
+                    <img
+                      src={getImageUrl(navConfig.logoUrl)}
+                      alt={navConfig.brandName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-pink-500 group-hover:rotate-12 transition-transform duration-300" />
+                  )}
                 </div>
               </div>
               <div className="flex flex-col">
                 <span className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 bg-clip-text text-transparent">
-                  KHASTORE
+                  {navConfig.brandName || "KHASTORE"}
                 </span>
                 <span className="text-[9px] font-bold text-gray-500 tracking-widest uppercase -mt-1">
-                  Premium Deals
+                  {navConfig.brandSubtitle || "Premium Deals"}
                 </span>
               </div>
             </Link>
@@ -125,12 +134,12 @@ export default function Navbar() {
                 )}
               </NavLink>
 
-              {/* Logged In User State */}
+              {/* User Dropdown */}
               {user ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setProfileDropdown(!profileDropdown)}
-                    className="flex items-center space-x-2 p-1.5 pr-3 rounded-2xl bg-white/90 border border-white/80 shadow-sm hover:shadow-md transition active:scale-95"
+                    className="flex items-center space-x-2 p-1.5 pr-3 rounded-2xl bg-white/90 border border-white/80 shadow-sm hover:shadow-md transition active:scale-95 cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-500 text-white flex items-center justify-center font-black text-xs uppercase shadow-sm">
                       {user.name ? user.name.charAt(0).toUpperCase() : "U"}
@@ -152,7 +161,6 @@ export default function Navbar() {
                     />
                   </button>
 
-                  {/* Dropdown Menu */}
                   {profileDropdown && (
                     <div className="absolute right-0 mt-2.5 w-60 bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-100 py-3 z-50 animate-in fade-in zoom-in-95 duration-200">
                       <div className="px-4 py-2 border-b border-gray-100 space-y-1">
@@ -169,7 +177,6 @@ export default function Navbar() {
                       </div>
 
                       <div className="p-1.5 space-y-1">
-                        {/* Admin Link (Only for Admin Role) */}
                         {user.role === "admin" && (
                           <Link
                             to="/admin/dashboard"
@@ -181,25 +188,23 @@ export default function Navbar() {
                           </Link>
                         )}
 
-                        {/* View & Edit Profile */}
                         <button
                           onClick={() => {
                             setProfileDropdown(false);
                             setIsModalOpen(true);
                           }}
-                          className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-xl flex items-center space-x-2 transition"
+                          className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-xl flex items-center space-x-2 transition cursor-pointer"
                         >
                           <UserIcon className="w-4 h-4 text-pink-500" />
                           <span>My Profile & Details</span>
                         </button>
 
-                        {/* Logout */}
                         <button
                           onClick={() => {
                             setProfileDropdown(false);
                             logoutUser();
                           }}
-                          className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center space-x-2 transition"
+                          className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center space-x-2 transition cursor-pointer"
                         >
                           <LogOut className="w-4 h-4 text-rose-500" />
                           <span>Logout Session</span>
@@ -209,7 +214,6 @@ export default function Navbar() {
                   )}
                 </div>
               ) : (
-                /* Logged Out State: Login Button */
                 <Link
                   to="/login"
                   className="hidden sm:inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-white bg-gradient-to-r from-violet-600 via-pink-500 to-amber-500 hover:opacity-95 shadow-lg shadow-pink-500/30 active:scale-95 transition-all duration-200"
@@ -219,10 +223,10 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* Mobile Menu Hamburger */}
+              {/* Mobile Hamburger */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="md:hidden p-2.5 rounded-2xl bg-white/80 border border-white/60 text-slate-700 hover:text-pink-600 transition"
+                className="md:hidden p-2.5 rounded-2xl bg-white/80 border border-white/60 text-slate-700 hover:text-pink-600 transition cursor-pointer"
                 aria-label="Toggle Menu"
               >
                 {isOpen ? <X className="w-6 h-6 text-pink-600" /> : <Menu className="w-6 h-6" />}
@@ -286,7 +290,7 @@ export default function Navbar() {
                       setIsOpen(false);
                       setIsModalOpen(true);
                     }}
-                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-2xl font-bold text-xs text-gray-800 bg-white border border-gray-200 shadow-sm active:scale-95 transition"
+                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-2xl font-bold text-xs text-gray-800 bg-white border border-gray-200 shadow-sm active:scale-95 transition cursor-pointer"
                   >
                     <UserIcon className="w-4 h-4 text-pink-600" />
                     <span>My Profile & Edit</span>
@@ -297,7 +301,7 @@ export default function Navbar() {
                       setIsOpen(false);
                       logoutUser();
                     }}
-                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-2xl font-bold text-xs text-white bg-rose-600 shadow-md active:scale-95 transition"
+                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-2xl font-bold text-xs text-white bg-rose-600 shadow-md active:scale-95 transition cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Logout Session</span>
@@ -318,7 +322,6 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* User Edit Profile Modal */}
       <ProfileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );

@@ -6,7 +6,6 @@ import {
   Info,
   MessageSquare,
   Package,
-  ShoppingBag,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
@@ -15,19 +14,29 @@ import {
   Sparkles
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
+import { getImageUrl } from "../../utils/productUtils";
 
 export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
+  const { settings } = useSettings();
 
-  // navItems array me yeh item add karein:
-const navItems = [
-  { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "About Us CMS", to: "/admin/about-cms", icon: Info },
-  { label: "Contact Us CMS", to: "/admin/contact-cms", icon: Layers },
-  { label: "Contact CRM Tickets", to: "/admin/contact-inquiries", icon: MessageSquare }
-];
+  // Dynamic Navbar branding values for Admin Panel
+  const navBrand = settings?.navbar || {};
+  const brandName = navBrand.brandName || "KHASTORE";
+  const brandSubtitle = navBrand.brandSubtitle || "Admin Studio";
+  const logoUrl = navBrand.logoUrl;
+
+  const navItems = [
+    { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Products CMS", to: "/admin/products", icon: Package },
+    { label: "Header & Footer CMS", to: "/admin/header-footer-cms", icon: Sparkles },
+    { label: "About Us CMS", to: "/admin/about-cms", icon: Info },
+    { label: "Contact Us CMS", to: "/admin/contact-cms", icon: Layers },
+    { label: "Contact CRM Tickets", to: "/admin/contact-inquiries", icon: MessageSquare }
+  ];
 
   const getLinkClasses = ({ isActive }) =>
     `flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
@@ -53,19 +62,34 @@ const navItems = [
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         <div className="space-y-6">
-          {/* Logo & Collapse Header */}
+          {/* Logo & Dynamic Brand Header */}
           <div className="flex items-center justify-between px-1">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-pink-500 flex items-center justify-center text-white shadow-md">
-                <Sparkles className="w-5 h-5" />
+            <Link to="/" className="flex items-center space-x-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[2px] shadow-md shrink-0">
+                <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center overflow-hidden">
+                  {logoUrl ? (
+                    <img
+                      src={getImageUrl(logoUrl)}
+                      alt={brandName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-pink-500" />
+                  )}
+                </div>
               </div>
+
               {!collapsed && (
-                <div>
-                  <span className="font-black text-sm tracking-tight bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
-                    KHASTORE
+                <div className="min-w-0 flex-1">
+                  <span className="block font-black text-sm tracking-tight bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent truncate">
+                    {brandName}
                   </span>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase -mt-0.5">
-                    Admin Studio
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate -mt-0.5">
+                    {brandSubtitle}
                   </span>
                 </div>
               )}
@@ -73,7 +97,7 @@ const navItems = [
 
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="hidden lg:flex p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500"
+              className="hidden lg:flex p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 cursor-pointer"
               title="Toggle Sidebar"
             >
               {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -81,7 +105,7 @@ const navItems = [
 
             <button
               onClick={() => setMobileOpen(false)}
-              className="lg:hidden p-1.5 text-slate-500"
+              className="lg:hidden p-1.5 text-slate-500 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -117,6 +141,7 @@ const navItems = [
             <ExternalLink className="w-4 h-4 shrink-0" />
             {!collapsed && <span>Live Public Store</span>}
           </Link>
+
           {!collapsed && (
             <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center space-x-2">
               <div className="w-7 h-7 rounded-xl bg-violet-600 text-white font-bold text-xs flex items-center justify-center">
@@ -137,13 +162,24 @@ const navItems = [
         <header className="lg:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30">
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-xl border border-slate-200 text-slate-700"
+            className="p-2 rounded-xl border border-slate-200 text-slate-700 cursor-pointer"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-black text-sm bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
-            Admin Studio
-          </span>
+
+          <div className="flex items-center space-x-2">
+            <div className="w-7 h-7 rounded-lg overflow-hidden border border-gray-100 flex items-center justify-center bg-gray-50">
+              {logoUrl ? (
+                <img src={getImageUrl(logoUrl)} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-pink-500" />
+              )}
+            </div>
+            <span className="font-black text-sm bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent truncate max-w-[150px]">
+              {brandName}
+            </span>
+          </div>
+
           <div className="w-8" />
         </header>
 

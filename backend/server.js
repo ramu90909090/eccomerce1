@@ -12,20 +12,26 @@ const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
 const hpp = require("hpp");
 const connectDB = require("./config/db");
+
+// Routes
 const authRoutes = require("./routes/authRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const aboutRoutes = require("./routes/aboutRoutes");
-
-
+const productRoutes = require("./routes/productRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 // Database initialization
 connectDB();
 
 const app = express();
 
-// Security Headers
-app.use(helmet());
+// 1. Security Headers with Cross-Origin Resource Policy for Images
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  })
+);
 
-// 1. CORS Configuration
+// 2. CORS Configuration
 const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 const corsOptions = {
   origin: clientUrl,
@@ -35,19 +41,20 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// 2. Rate Limiting
+// 3. Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 150,
   message: { success: false, message: "Too many requests from this IP. Please try again after 15 minutes." }
 });
 app.use("/api", limiter);
 
-// 3. Body & Cookie Parsers
+// 4. Body & Cookie Parsers
 app.use(express.json({ limit: "15kb" }));
+app.use(express.urlencoded({ extended: true, limit: "15kb" }));
 app.use(cookieParser());
 
-// 4. Express 5 Safe Mongo Sanitize (No direct req.query reassignment)
+// 5. Express 5 Safe Mongo Sanitize
 app.use((req, res, next) => {
   if (req.body) req.body = mongoSanitize.sanitize(req.body);
   if (req.params) req.params = mongoSanitize.sanitize(req.params);
@@ -61,7 +68,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 5. Express 5 Safe XSS Sanitizer (Replaces buggy xss-clean)
+// 6. Express 5 Safe XSS Sanitizer
 const sanitizeString = (str) => {
   if (typeof str !== "string") return str;
   return str.replace(/[<>]/g, "");
@@ -85,18 +92,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// 6. Parameter Pollution Prevention
+// 7. Parameter Pollution Prevention
 app.use(hpp());
 
-// Static files serving for uploaded images
+// 8. Static Files Serving (Images access setup)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-// 7. Routes Mounting
+
+// 9. Routes Mounting
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/contact", contactRoutes);
 app.use("/api/v1/about", aboutRoutes);
-
-
-
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/settings", settingsRoutes);
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date() });
@@ -116,5 +123,6 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running in ${NODE_ENV} mode on port ${PORT}`);
+  console.log(`📁 Static files serving at: http://localhost:${PORT}/uploads`);
   console.log(`🔗 Allowed Client: ${clientUrl}`);
 });
