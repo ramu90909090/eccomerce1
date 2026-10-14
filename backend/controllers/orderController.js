@@ -1,7 +1,10 @@
+// backend/controllers/orderController.js
+
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const jwt = require("jsonwebtoken");
 
-// 1. Create New Order (Stock abhi deduct nahi hoga, sirf order log hoga)
+// 1. Create New Order (Reliable User Association)
 exports.createOrder = async (req, res) => {
   try {
     const {
@@ -17,6 +20,20 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Order items cannot be empty." });
     }
 
+    // Identify Logged-In User either from Auth Token or Explicit userId
+    let finalUserId = userId || null;
+    if (!finalUserId) {
+      const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_default_secret_key_2026");
+          finalUserId = decoded.id;
+        } catch (e) {
+          // Token invalid, proceed as guest
+        }
+      }
+    }
+
     // Format items schema
     const formattedItems = items.map((it) => ({
       product: it.product || it.id || it._id,
@@ -27,10 +44,10 @@ exports.createOrder = async (req, res) => {
       total: (it.finalPrice || it.price) * (it.quantity || 1)
     }));
 
-    // Create Order with default status 'Processing' / 'Pending'
+    // Create Order with accurate user reference
     const newOrder = await Order.create({
       orderId,
-      user: userId || req.user?._id || null,
+      user: finalUserId,
       items: formattedItems,
       shippingDetails,
       paymentInfo: {
@@ -40,7 +57,7 @@ exports.createOrder = async (req, res) => {
       },
       orderStatus: "Pending",
       pricing,
-      stockDeducted: false // Stock tabhi deduct hoga jab payment verify hogi
+      stockDeducted: false
     });
 
     res.status(201).json({
@@ -54,7 +71,83 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// 2. Update Order & Payment Status (Yahan Payment "Verified" hone par Stock Deduct hoga)
+// 2. Get Logged-in User Orders (Matching user ID OR Email/Phone fallback)
+exports.getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    const userEmail = req.user?.email;
+    const userPhone = req.user?.mobile || req.user?.phone;
+
+    const { search, orderStatus, page = 1, limit = 5 } = req.query;
+
+    // Robust matching: Check User ID OR Email matching user's account
+    let query = {
+      $or: [
+        { user: userId },
+        ...(userEmail ? [{ "shippingDetails.email": userEmail }] : []),
+        ...(userPhone ? [{ "shippingDetails.phone": userPhone }] : [])
+      ]
+    };
+
+    if (orderStatus && orderStatus !== "All") {
+      query.orderStatus = orderStatus;
+    }
+
+    if (search && search.trim()) {
+      const regex = { $regex: search.trim(), $options: "i" };
+      query.$and = [
+        {
+          $or: [
+            { orderId: regex },
+            { "items.name": regex },
+            { "paymentInfo.utrNumber": regex }
+          ]
+        }
+      ];
+    }
+
+    const currentPage = Number(page);
+    const perPage = Number(limit);
+    const skip = (currentPage - 1) * perPage;
+
+    const [orders, totalOrders] = await Promise.all([
+      Order.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(perPage),
+      Order.countDocuments(query)
+    ]);
+
+    const [deliveredCount, pendingCount] = await Promise.all([
+      Order.countDocuments({ ...query, orderStatus: "Delivered" }),
+      Order.countDocuments({
+        ...query,
+        orderStatus: { $in: ["Pending", "Processing", "Shipped"] }
+      })
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: orders,
+      pagination: {
+        total: totalOrders,
+        totalPages: Math.ceil(totalOrders / perPage) || 1,
+        currentPage,
+        limit: perPage
+      },
+      stats: {
+        totalOrders,
+        pendingOrders: pendingCount,
+        deliveredOrders: deliveredCount
+      }
+    });
+  } catch (error) {
+    console.error("getMyOrders Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 3. Update Order Status & Payment Verification (Admin update trigger)
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderStatus, paymentStatus, notes } = req.body;
@@ -64,40 +157,17 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // =========================================================================
-    // CONDITION 1: Payment Status "Verified" hua aur pehle deduct nahi hua tha
-    // =========================================================================
+    // Deduct stock if payment is Verified
     if (paymentStatus === "Verified" && !order.stockDeducted) {
-      // Check karein ki stock available hai ya nahi
-      for (const item of order.items) {
-        const prod = await Product.findById(item.product);
-        if (!prod) {
-          return res.status(404).json({
-            success: false,
-            message: `Product "${item.name}" system me nahi mila.`
-          });
-        }
-        if (prod.stock < item.quantity) {
-          return res.status(400).json({
-            success: false,
-            message: `Product "${prod.name}" me sirf ${prod.stock} items bache hain, jabki order me ${item.quantity} hain. Stock kam nahi kiya ja sakta.`
-          });
-        }
-      }
-
-      // Stock minus karein jitni quantity order hui hai
       for (const item of order.items) {
         await Product.findByIdAndUpdate(item.product, {
           $inc: { stock: -item.quantity }
         });
       }
-
       order.stockDeducted = true;
     }
 
-    // =========================================================================
-    // CONDITION 2: Agar pehle Verified tha aur ab Cancelled ya Rejected hua to Stock Wapas Return (+ add) karein
-    // =========================================================================
+    // Restore stock if cancelled/rejected after deduction
     const isCancelledOrRejected =
       orderStatus === "Cancelled" ||
       paymentStatus === "Rejected" ||
@@ -112,7 +182,6 @@ exports.updateOrderStatus = async (req, res) => {
       order.stockDeducted = false;
     }
 
-    // Update Statuses
     if (orderStatus) order.orderStatus = orderStatus;
     if (paymentStatus) order.paymentInfo.status = paymentStatus;
     if (notes !== undefined) order.notes = notes;
@@ -121,34 +190,22 @@ exports.updateOrderStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message:
-        paymentStatus === "Verified"
-          ? "Payment verify ho gayi aur product stock successfully deduct ho gaya!"
-          : "Order status successfully update ho gaya.",
+      message: "Order status updated successfully",
       data: order
     });
   } catch (error) {
-    console.error("Order update error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// 3. Get All Orders with Advanced Filters, Search & Pagination (Admin)
+// 4. Get All Orders (Admin)
 exports.getAllOrders = async (req, res) => {
   try {
-    const {
-      search,
-      orderStatus,
-      paymentStatus,
-      paymentMode,
-      page = 1,
-      limit = 10
-    } = req.query;
-
+    const { search, orderStatus, paymentStatus, paymentMode, page = 1, limit = 10 } = req.query;
     let query = {};
 
     if (search && search.trim()) {
-      const regex = { $regex: search.trim(),$options: "i" };
+      const regex = { $regex: search.trim(), $options: "i" };
       query.$or = [
         { orderId: regex },
         { "shippingDetails.name": regex },
@@ -158,34 +215,22 @@ exports.getAllOrders = async (req, res) => {
       ];
     }
 
-    if (orderStatus && orderStatus !== "All") {
-      query.orderStatus = orderStatus;
-    }
-
-    if (paymentStatus && paymentStatus !== "All") {
-      query["paymentInfo.status"] = paymentStatus;
-    }
-
-    if (paymentMode && paymentMode !== "All") {
-      query["paymentInfo.mode"] = paymentMode;
-    }
+    if (orderStatus && orderStatus !== "All") query.orderStatus = orderStatus;
+    if (paymentStatus && paymentStatus !== "All") query["paymentInfo.status"] = paymentStatus;
+    if (paymentMode && paymentMode !== "All") query["paymentInfo.mode"] = paymentMode;
 
     const currentPage = Number(page);
     const perPage = Number(limit);
     const skip = (currentPage - 1) * perPage;
 
     const [orders, totalOrders] = await Promise.all([
-      Order.find(query)
-        .populate("user", "name email")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(perPage),
+      Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(perPage),
       Order.countDocuments(query)
     ]);
 
     const [totalRevenueData, pendingOrdersCount, deliveredOrdersCount] = await Promise.all([
       Order.aggregate([
-        { $match: { "paymentInfo.status": "Verified" } }, // Sirf verified revenue
+        { $match: { "paymentInfo.status": "Verified" } },
         { $group: { _id: null, total: { $sum: "$pricing.totalPayable" } } }
       ]),
       Order.countDocuments({ orderStatus: "Pending" }),
@@ -213,20 +258,15 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// 4. Delete Order
+// 5. Delete Order
 exports.deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
-    // Agar stock deduct ho chuka tha toh delete karne se pehle restore karein
     if (order.stockDeducted) {
       for (const item of order.items) {
-        await Product.findByIdAndUpdate(item.product, {
-          $inc: { stock: item.quantity }
-        });
+        await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
       }
     }
 

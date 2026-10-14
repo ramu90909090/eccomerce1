@@ -52,9 +52,9 @@ export default function Payment() {
       setShippingData({
         name: user.name || "",
         email: user.email || "",
-        phone: user.phone || "",
+        phone: user.phone || user.mobile || "",
         address: user.address || "",
-        city: user.city || "",
+        city: user.city || user.district || "",
         pincode: user.pincode || "",
         state: user.state || "Uttar Pradesh"
       });
@@ -186,7 +186,7 @@ export default function Payment() {
           couponDiscount,
           totalPayable: netPayable
         },
-        userId: user?._id || null
+        userId: user?._id || user?.id || null
       };
 
       await API.post("/orders", orderPayload);

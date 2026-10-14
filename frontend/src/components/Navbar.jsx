@@ -14,7 +14,8 @@ import {
   LogOut,
   ChevronDown,
   ShieldAlert,
-  Mail
+  Mail,
+  Boxes
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -33,7 +34,10 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const totalItems = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
+  // Dynamic store name & logo from backend settings
   const navConfig = settings?.navbar || {};
+  const brandName = navConfig.brandName || "KHASTORE";
+  const brandSubtitle = navConfig.brandSubtitle || "Premium Deals";
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -64,15 +68,19 @@ export default function Navbar() {
       <nav className="sticky top-0 z-50 bg-gradient-to-r from-violet-50/90 via-pink-50/80 to-amber-50/90 backdrop-blur-xl border-b border-white/60 shadow-lg shadow-pink-500/5 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
-            {/* Dynamic Brand Logo & Titles */}
+            {/* Dynamic Brand Logo & Store Name */}
             <Link to="/" className="flex items-center space-x-2.5 group">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[2px] shadow-lg shadow-pink-500/30 group-hover:scale-105 transition-transform duration-300">
                 <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center overflow-hidden">
                   {navConfig.logoUrl ? (
                     <img
                       src={getImageUrl(navConfig.logoUrl)}
-                      alt={navConfig.brandName}
+                      alt={brandName}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   ) : (
                     <Sparkles className="w-5 h-5 text-pink-500 group-hover:rotate-12 transition-transform duration-300" />
@@ -81,10 +89,10 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col">
                 <span className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 bg-clip-text text-transparent">
-                  {navConfig.brandName || "KHASTORE"}
+                  {brandName}
                 </span>
                 <span className="text-[9px] font-bold text-gray-500 tracking-widest uppercase -mt-1">
-                  {navConfig.brandSubtitle || "Premium Deals"}
+                  {brandSubtitle}
                 </span>
               </div>
             </Link>
@@ -112,7 +120,7 @@ export default function Navbar() {
               </NavLink>
             </div>
 
-            {/* Right Side: Cart & Profile Actions */}
+            {/* Right Side: Cart & User Account Menu */}
             <div className="flex items-center space-x-3 sm:space-x-4">
               {/* Cart Button */}
               <NavLink
@@ -134,7 +142,7 @@ export default function Navbar() {
                 )}
               </NavLink>
 
-              {/* User Dropdown */}
+              {/* Logged In User State */}
               {user ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
@@ -161,6 +169,7 @@ export default function Navbar() {
                     />
                   </button>
 
+                  {/* Profile Dropdown Menu */}
                   {profileDropdown && (
                     <div className="absolute right-0 mt-2.5 w-60 bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-100 py-3 z-50 animate-in fade-in zoom-in-95 duration-200">
                       <div className="px-4 py-2 border-b border-gray-100 space-y-1">
@@ -177,6 +186,7 @@ export default function Navbar() {
                       </div>
 
                       <div className="p-1.5 space-y-1">
+                        {/* Admin Link if role is Admin */}
                         {user.role === "admin" && (
                           <Link
                             to="/admin/dashboard"
@@ -188,6 +198,17 @@ export default function Navbar() {
                           </Link>
                         )}
 
+                        {/* Customer Dashboard Link (Orders & Tracking) */}
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setProfileDropdown(false)}
+                          className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-xl flex items-center space-x-2 transition cursor-pointer"
+                        >
+                          <Boxes className="w-4 h-4 text-pink-500" />
+                          <span>My Orders & Tracking</span>
+                        </Link>
+
+                        {/* Edit Profile */}
                         <button
                           onClick={() => {
                             setProfileDropdown(false);
@@ -199,6 +220,7 @@ export default function Navbar() {
                           <span>My Profile & Details</span>
                         </button>
 
+                        {/* Logout */}
                         <button
                           onClick={() => {
                             setProfileDropdown(false);
@@ -214,6 +236,7 @@ export default function Navbar() {
                   )}
                 </div>
               ) : (
+                /* Logged Out State */
                 <Link
                   to="/login"
                   className="hidden sm:inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-white bg-gradient-to-r from-violet-600 via-pink-500 to-amber-500 hover:opacity-95 shadow-lg shadow-pink-500/30 active:scale-95 transition-all duration-200"
@@ -223,7 +246,7 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* Mobile Hamburger */}
+              {/* Mobile Menu Hamburger */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="md:hidden p-2.5 rounded-2xl bg-white/80 border border-white/60 text-slate-700 hover:text-pink-600 transition cursor-pointer"
@@ -285,6 +308,16 @@ export default function Navbar() {
                     </Link>
                   )}
 
+                  {/* Customer Orders link on Mobile */}
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-2xl font-bold text-xs text-pink-700 bg-pink-50 border border-pink-200 shadow-sm active:scale-95 transition"
+                  >
+                    <Boxes className="w-4 h-4 text-pink-600" />
+                    <span>My Orders & Tracking</span>
+                  </Link>
+
                   <button
                     onClick={() => {
                       setIsOpen(false);
@@ -322,6 +355,7 @@ export default function Navbar() {
         )}
       </nav>
 
+      {/* User Edit Profile Modal */}
       <ProfileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );

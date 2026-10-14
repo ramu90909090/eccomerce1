@@ -2,13 +2,14 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
+import { SettingsProvider } from "./context/SettingsContext";
 
 // Components
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./components/admin/AdminLayout";
-import { SettingsProvider } from "./context/SettingsContext";
+
 // Public Pages
 import Home from "./pages/Home";
 import Products from "./pages/Products";
@@ -20,6 +21,9 @@ import ContactUs from "./pages/user/ContactUs";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+
+// User Dashboard
+import UserDashboard from "./pages/user/UserDashboard";
 
 // Admin CMS & CRM Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -34,64 +38,76 @@ export default function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-      <CartProvider>
-        <Router>
-          <Routes>
-            {/* 1. Admin Control Hub (With Left Sidebar Menu Layout) */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<AdminDashboard />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="products" element={<ManageProducts />} /> {/* <-- Add this */}
-              <Route path="about-cms" element={<AboutPageCms />} />
-              <Route path="contact-cms" element={<ContactPageCms />} />
-              <Route path="contact-inquiries" element={<ContactInquiries />} />
-             <Route path="header-footer-cms" element={<HeaderFooterCms />} />
-              <Route path="orders" element={<AdminOrders />} />
-            </Route>
+        <CartProvider>
+          <Router>
+            <Routes>
+              {/* 1. Admin Control Hub */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<AdminDashboard />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="products" element={<ManageProducts />} />
+                <Route path="orders" element={<AdminOrders />} />
+                <Route path="header-footer-cms" element={<HeaderFooterCms />} />
+                <Route path="about-cms" element={<AboutPageCms />} />
+                <Route path="contact-cms" element={<ContactPageCms />} />
+                <Route path="contact-inquiries" element={<ContactInquiries />} />
+              </Route>
 
-            {/* 2. Public Storefront Layout */}
-            <Route
-              path="*"
-              element={
-                <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
-                  <Navbar />
-                  <main className="flex-1">
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/products" element={<Products />} />
-                      <Route path="/product/:id" element={<ProductDetails />} />
-                      <Route path="/cart" element={<Cart />} />
-                      <Route path="/payment" element={<Payment />} />
-                      <Route path="/about" element={<AboutUs />} />
-                      <Route path="/contact" element={<ContactUs />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route
-                        path="*"
-                        element={
-                          <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-4">
-                            <h2 className="text-4xl font-black text-slate-800 mb-2">404</h2>
-                            <p className="text-sm font-semibold text-slate-500">Page Not Found</p>
-                          </div>
-                        }
-                      />
-                    </Routes>
-                  </main>
-                  <Footer />
-                </div>
-              }
-            />
-          </Routes>
-        </Router>
-      </CartProvider>
+              {/* 2. Public & User Storefront Layout */}
+              <Route
+                path="*"
+                element={
+                  <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
+                    <Navbar />
+                    <main className="flex-1">
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/products" element={<Products />} />
+                        <Route path="/product/:id" element={<ProductDetails />} />
+                        <Route path="/cart" element={<Cart />} />
+                        <Route path="/payment" element={<Payment />} />
+                        <Route path="/about" element={<AboutUs />} />
+                        <Route path="/contact" element={<ContactUs />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+                        {/* Logged-In User Dashboard (Orders & Profile) */}
+                        <Route
+                          path="/dashboard"
+                          element={
+                            <ProtectedRoute allowedRoles={["user", "admin"]}>
+                              <UserDashboard />
+                            </ProtectedRoute>
+                          }
+                        />
+
+                        {/* 404 Fallback */}
+                        <Route
+                          path="*"
+                          element={
+                            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-4">
+                              <h2 className="text-4xl font-black text-slate-800 mb-2">404</h2>
+                              <p className="text-sm font-semibold text-slate-500">Page Not Found</p>
+                            </div>
+                          }
+                        />
+                      </Routes>
+                    </main>
+                    <Footer />
+                  </div>
+                }
+              />
+            </Routes>
+          </Router>
+        </CartProvider>
       </SettingsProvider>
     </AuthProvider>
   );

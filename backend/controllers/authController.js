@@ -12,7 +12,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_default_secret_key_2026";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
-// Helper function to dynamically fetch Navbar Brand Name from SiteSettings
+// Dynamic Store Name Helper
 const getDynamicStoreName = async () => {
   try {
     const settings = await SiteSettings.findOne();
@@ -23,7 +23,7 @@ const getDynamicStoreName = async () => {
 };
 
 // ==========================================
-// 1. REGISTER (Initial Data Validation & Send OTP)
+// 1. REGISTER (Validate & Send Registration OTP)
 // ==========================================
 exports.register = async (req, res) => {
   try {
@@ -41,15 +41,11 @@ exports.register = async (req, res) => {
 
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // Fetch dynamic store name
     const storeName = await getDynamicStoreName();
 
-    // Purane registration OTPs delete karke naya create karein
     await Otp.deleteMany({ email: cleanEmail, purpose: "registration" });
     await Otp.create({ email: cleanEmail, otp: hashedOtp, purpose: "registration" });
 
-    // Send OTP via Email
     await sendEmail({
       to: cleanEmail,
       subject: `Your Registration OTP - ${storeName}`,
@@ -92,7 +88,6 @@ exports.verifyRegistrationOtp = async (req, res) => {
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanOtp = String(otp).trim();
 
-    // 1. Double check duplicate user
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({
@@ -101,7 +96,6 @@ exports.verifyRegistrationOtp = async (req, res) => {
       });
     }
 
-    // 2. Fetch OTP from DB
     const otpDoc = await Otp.findOne({ email: cleanEmail, purpose: "registration" });
     if (!otpDoc) {
       return res.status(400).json({
@@ -110,7 +104,6 @@ exports.verifyRegistrationOtp = async (req, res) => {
       });
     }
 
-    // 3. Compare OTP Hash
     const isValid = await bcrypt.compare(cleanOtp, otpDoc.otp);
     if (!isValid) {
       return res.status(400).json({
@@ -119,10 +112,8 @@ exports.verifyRegistrationOtp = async (req, res) => {
       });
     }
 
-    // 4. Sanitize: confirmPassword ko filter karke remove karein taaki schema error na de
     const { confirmPassword, ...validUserData } = userData;
 
-    // 5. Create Verified User
     const newUser = await User.create({
       name: validUserData.name,
       email: cleanEmail,
@@ -136,7 +127,6 @@ exports.verifyRegistrationOtp = async (req, res) => {
       role: "user"
     });
 
-    // 6. Delete consumed OTP
     await Otp.deleteMany({ email: cleanEmail, purpose: "registration" });
 
     res.status(201).json({
@@ -159,7 +149,7 @@ exports.verifyRegistrationOtp = async (req, res) => {
 };
 
 // ==========================================
-// 3. LOGIN (Verify Credentials & Send Login OTP)
+// 3. LOGIN (Verify Credentials & Send OTP)
 // ==========================================
 exports.login = async (req, res) => {
   try {
@@ -173,8 +163,6 @@ exports.login = async (req, res) => {
 
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // Fetch dynamic store name
     const storeName = await getDynamicStoreName();
 
     await Otp.deleteMany({ email: cleanEmail, purpose: "login" });
@@ -224,21 +212,19 @@ exports.verifyLoginOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: "Galat OTP enter kiya gaya hai." });
     }
 
-    const user = await User.findOne({ email: cleanEmail });
+    const user = await User.findOne({ email: cleanEmail }).select("-password");
     if (!user) {
       return res.status(404).json({ success: false, message: "User account exist nahi karta." });
     }
 
     await Otp.deleteMany({ email: cleanEmail, purpose: "login" });
 
-    // Issue JWT Token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    // Secure HttpOnly Cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -249,12 +235,8 @@ exports.verifyLoginOtp = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Login successful!",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      token,
+      user
     });
   } catch (error) {
     console.error("verifyLoginOtp Error:", error);
@@ -276,8 +258,6 @@ exports.resendOtp = async (req, res) => {
 
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // Fetch dynamic store name
     const storeName = await getDynamicStoreName();
 
     await Otp.deleteMany({ email: cleanEmail, purpose });
@@ -320,8 +300,6 @@ exports.forgotPassword = async (req, res) => {
 
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
-
-    // Fetch dynamic store name
     const storeName = await getDynamicStoreName();
 
     await Otp.deleteMany({ email: cleanEmail, purpose: "forgot_password" });
@@ -350,7 +328,7 @@ exports.forgotPassword = async (req, res) => {
 };
 
 // ==========================================
-// 7. RESET PASSWORD (Verify OTP & Update Password)
+// 7. RESET PASSWORD (Verify OTP & Update)
 // ==========================================
 exports.resetPassword = async (req, res) => {
   try {
@@ -382,7 +360,10 @@ exports.resetPassword = async (req, res) => {
 
     await Otp.deleteMany({ email: cleanEmail, purpose: "forgot_password" });
 
-    res.status(200).json({ success: true, message: "Password update ho gaya hai! Ab aap naye password se login kar sakte hain." });
+    res.status(200).json({
+      success: true,
+      message: "Password update ho gaya hai! Ab aap naye password se login kar sakte hain."
+    });
   } catch (error) {
     console.error("resetPassword Error:", error);
     res.status(500).json({ success: false, message: error.message || "Password reset update me error aaya." });
@@ -390,7 +371,7 @@ exports.resetPassword = async (req, res) => {
 };
 
 // ==========================================
-// 8. GOOGLE LOGIN (OAuth 2.0 Token Verification)
+// 8. GOOGLE LOGIN (OAuth 2.0)
 // ==========================================
 exports.googleLogin = async (req, res) => {
   try {
@@ -441,6 +422,7 @@ exports.googleLogin = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Google login successful!",
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -451,5 +433,92 @@ exports.googleLogin = async (req, res) => {
   } catch (error) {
     console.error("googleLogin Error:", error);
     res.status(500).json({ success: false, message: "Google authentication verify karne me fail ho gaya." });
+  }
+};
+
+// ==========================================
+// 9. GET LOGGED-IN USER PROFILE
+// ==========================================
+exports.getProfile = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(200).json({ success: false, data: null, user: null });
+    }
+
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User nahi mila." });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+      user
+    });
+  } catch (error) {
+    console.error("getProfile Error:", error);
+    res.status(500).json({ success: false, message: "Profile load karne me error aaya." });
+  }
+};
+
+// ==========================================
+// 10. UPDATE LOGGED-IN USER PROFILE
+// ==========================================
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized. Kripya login karein." });
+    }
+
+    const { name, mobile, address, district, city, pincode, state } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        name,
+        mobile,
+        address,
+        district: district || city,
+        city: city || district,
+        pincode,
+        state
+      },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "User account exist nahi karta." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile details successfully update ho gayi!",
+      data: updatedUser,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error("updateProfile Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Profile update karte samay server error aaya."
+    });
+  }
+};
+
+// ==========================================
+// 11. LOGOUT
+// ==========================================
+exports.logout = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
+    });
+    res.status(200).json({ success: true, message: "Logout successful" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Logout failed" });
   }
 };
