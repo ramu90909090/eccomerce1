@@ -28,8 +28,19 @@ export default function Payment() {
   const { settings } = useSettings();
   const navigate = useNavigate();
 
+  // Dynamic store & Payment Gateway settings from Admin
   const storeName = settings?.navbar?.brandName || "KHASTORE";
   const storeSubtitle = settings?.navbar?.brandSubtitle || "Official Store Invoice";
+  
+  // Dynamic Merchant UPI Details
+  const paymentConfig = settings?.paymentGateway || {};
+  const MERCHANT_UPI_ID = paymentConfig.upiId || "juhip2019@okaxis";
+  const MERCHANT_NAME = paymentConfig.merchantName || "Juhi Pafhj";
+  const customQrUrl = paymentConfig.qrImageUrl || "";
+  const verificationNote =
+    paymentConfig.verificationNote ||
+    `Payment karte waqt verify karein ki receiver UPI ID ${MERCHANT_UPI_ID} (Name: ${MERCHANT_NAME}) hi show ho rahi ho.`;
+  const codMinAmount = paymentConfig.codMinAmount || 5000;
 
   const [orderId] = useState(
     () => `ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
@@ -93,10 +104,9 @@ export default function Payment() {
   const deliveryFee = itemsSubtotal < 1000 && itemsSubtotal > 0 ? 50 : 0;
   const gstAmount = Math.round(itemsSubtotal * 0.18);
   const netPayable = Math.max(0, itemsSubtotal + gstAmount + deliveryFee - couponDiscount);
-  const isCodEligible = itemsSubtotal > 5000;
-
-  const MERCHANT_UPI_ID = "juhip2019@okaxis";
-  const MERCHANT_NAME = "Juhi Pafhj";
+  
+  // Dynamic COD threshold check
+  const isCodEligible = itemsSubtotal > codMinAmount;
 
   const productSummary = useMemo(() => {
     if (!items.length) return "Store Order";
@@ -104,12 +114,18 @@ export default function Payment() {
     return names.length > 30 ? names.substring(0, 27) + "..." : names;
   }, [items]);
 
-  const dynamicUpiUrl = useMemo(() => {
-    const transactionNote = `${storeName} | ${orderId} | ${productSummary}`;
-    return `upi://pay?pa=${MERCHANT_UPI_ID}&pn=${encodeURIComponent(
-      MERCHANT_NAME
-    )}&am=${netPayable}&cu=INR&tr=${orderId}&tn=${encodeURIComponent(transactionNote)}`;
-  }, [storeName, MERCHANT_UPI_ID, MERCHANT_NAME, netPayable, orderId, productSummary]);
+  // const dynamicUpiUrl = useMemo(() => {
+  //   const transactionNote = `${storeName} | ${orderId} | ${productSummary}`;
+  //   return `upi://pay?pa=${MERCHANT_UPI_ID}&pn=${encodeURIComponent(
+  //     MERCHANT_NAME
+  //   )}&am=${netPayable}&cu=INR&tr=${orderId}&tn=${encodeURIComponent(transactionNote)}`;
+  // }, [storeName, MERCHANT_UPI_ID, MERCHANT_NAME, netPayable, orderId, productSummary]);
+const dynamicUpiUrl = useMemo(() => {
+  // am = amount, cu = INR, tr = transaction ref id, tn = transaction note
+  return `upi://pay?pa=${MERCHANT_UPI_ID}&pn=${encodeURIComponent(
+    MERCHANT_NAME
+  )}&am=${netPayable}&cu=INR&tr=${orderId}&tn=${encodeURIComponent(`${storeName} \vert{}${orderId}`)}`;
+}, [storeName, MERCHANT_UPI_ID, MERCHANT_NAME, netPayable, orderId]);
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(MERCHANT_UPI_ID);
@@ -143,7 +159,7 @@ export default function Payment() {
     }
 
     if (paymentMode === "cod" && !isCodEligible) {
-      alert("Cash on Delivery sirf ₹5,000 se upar ke order par uplabdh hai.");
+      alert(`Cash on Delivery sirf ₹${codMinAmount.toLocaleString()} se upar ke order par uplabdh hai.`);
       return;
     }
 
@@ -255,6 +271,7 @@ export default function Payment() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 p-6 sm:p-8 text-white shadow-2xl shadow-pink-500/20">
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-amber-400/30 rounded-full blur-3xl pointer-events-none" />
@@ -358,7 +375,7 @@ export default function Payment() {
                 type="button"
                 onClick={() => {
                   if (isCodEligible) setPaymentMode("cod");
-                  else alert("Cash on Delivery sirf ₹5,000 se upar ke order par uplabdh hai.");
+                  else alert(`Cash on Delivery sirf ₹${codMinAmount.toLocaleString()} se upar ke order par uplabdh hai.`);
                 }}
                 className={`p-4 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1.5 cursor-pointer ${
                   !isCodEligible
@@ -373,29 +390,31 @@ export default function Payment() {
                 </div>
                 <span className="text-xs font-black text-gray-900">Cash on Delivery</span>
                 <span className="text-[10px] text-gray-500">
-                  {isCodEligible ? "Available (> ₹5,000)" : "Min ₹5,000 required"}
+                  {isCodEligible ? `Available (> ₹${codMinAmount.toLocaleString()})` : `Min ₹${codMinAmount.toLocaleString()} required`}
                 </span>
               </button>
             </div>
 
             {paymentMode === "upi" && (
               <div className="space-y-4 pt-2">
+                {/* Dynamic Payment ID Alert Warning */}
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start space-x-3 text-xs text-amber-900">
                   <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="font-black text-amber-800">Payment ID Verification Alert:</p>
                     <p className="text-[11px] leading-relaxed">
-                      Payment karte waqt verify karein ki receiver UPI ID <strong>{MERCHANT_UPI_ID}</strong> (Name:{" "}
-                      <strong>{MERCHANT_NAME}</strong>) hi show ho rahi ho.
+                      {verificationNote}
                     </p>
                   </div>
                 </div>
 
+                {/* Dynamic QR Card */}
                 <PaymentQrCard
                   storeName={storeName}
                   orderId={orderId}
                   merchantName={MERCHANT_NAME}
                   merchantUpiId={MERCHANT_UPI_ID}
+                  customQrUrl={customQrUrl}
                   dynamicUpiUrl={dynamicUpiUrl}
                   productSummary={productSummary}
                   netPayable={netPayable}

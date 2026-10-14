@@ -6,6 +6,7 @@ import {
   Plus,
   Trash2,
   Sparkles,
+  QrCode,
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
@@ -16,12 +17,19 @@ import { getImageUrl } from "../../utils/productUtils";
 export default function HeaderFooterCms() {
   const { settings, fetchSettings } = useSettings();
   const [formData, setFormData] = useState(null);
-  const [activeTab, setActiveTab] = useState("navbar"); // "navbar" | "footer-brand" | "footer-trust" | "footer-info" | "footer-legal"
+  
+  // Available Tabs
+  const [activeTab, setActiveTab] = useState("navbar"); // "navbar" | "payment-qr" | "footer-brand" | "footer-trust" | "footer-info" | "footer-legal"
+  
+  // File Upload States
   const [navbarLogoFile, setNavbarLogoFile] = useState(null);
   const [footerLogoFile, setFooterLogoFile] = useState(null);
+  const [paymentQrFile, setPaymentQrFile] = useState(null);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
+  // Initialize Form Data from Settings
   useEffect(() => {
     if (settings) {
       setFormData(JSON.parse(JSON.stringify(settings)));
@@ -29,9 +37,14 @@ export default function HeaderFooterCms() {
   }, [settings]);
 
   if (!formData) {
-    return <div className="p-8 text-center text-xs font-bold text-gray-400">Loading Configuration...</div>;
+    return (
+      <div className="p-12 text-center text-xs font-bold text-gray-400">
+        Loading Configuration...
+      </div>
+    );
   }
 
+  // Save Handler for All Settings (FormData for JSON + Files)
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -43,6 +56,7 @@ export default function HeaderFooterCms() {
 
       if (navbarLogoFile) payload.append("navbarLogo", navbarLogoFile);
       if (footerLogoFile) payload.append("footerLogo", footerLogoFile);
+      if (paymentQrFile) payload.append("paymentQrFile", paymentQrFile);
 
       await API.put("/settings", payload, {
         headers: { "Content-Type": "multipart/form-data" }
@@ -57,34 +71,35 @@ export default function HeaderFooterCms() {
     }
   };
 
+  // Quick Links Helpers
   const handleAddQuickLink = () => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       footer: {
-        ...formData.footer,
-        quickLinks: [...(formData.footer.quickLinks || []), { label: "New Link", url: "/" }]
+        ...prev.footer,
+        quickLinks: [...(prev.footer?.quickLinks || []), { label: "New Link", url: "/" }]
       }
-    });
+    }));
   };
 
   const handleRemoveQuickLink = (index) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       footer: {
-        ...formData.footer,
-        quickLinks: formData.footer.quickLinks.filter((_, i) => i !== index)
+        ...prev.footer,
+        quickLinks: prev.footer.quickLinks.filter((_, i) => i !== index)
       }
-    });
+    }));
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
+      {/* 1. Header with Save Action */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Header & Footer CMS Hub</h1>
+          <h1 className="text-2xl font-black text-gray-900">Header, Footer & Payment CMS Hub</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Realtime branding, logos, descriptions aur complete footer touchpoints ko manage karein.
+            Realtime branding, logos, descriptions, bank QR details aur footer touchpoints ko manage karein.
           </p>
         </div>
         <button
@@ -97,6 +112,7 @@ export default function HeaderFooterCms() {
         </button>
       </div>
 
+      {/* Status Feedback Notification */}
       {statusMsg.text && (
         <div
           className={`p-4 rounded-2xl border text-xs font-bold flex items-center space-x-2 ${
@@ -105,15 +121,16 @@ export default function HeaderFooterCms() {
               : "bg-rose-50 border-rose-200 text-rose-700"
           }`}
         >
-          {statusMsg.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {statusMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
           <span>{statusMsg.text}</span>
         </div>
       )}
 
-      {/* Tabs */}
+      {/* 2. Navigation Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
         {[
           { id: "navbar", label: "Navbar Identity & Logo" },
+          { id: "payment-qr", label: "Bank UPI & QR Code Settings" },
           { id: "footer-brand", label: "Footer Brand & Description" },
           { id: "footer-trust", label: "Footer Trust Guarantees" },
           { id: "footer-info", label: "Customer Desk & Socials" },
@@ -133,7 +150,9 @@ export default function HeaderFooterCms() {
         ))}
       </div>
 
-      {/* TAB 1: NAVBAR */}
+      {/* ======================================================== */}
+      {/* TAB 1: NAVBAR IDENTITY & LOGO                             */}
+      {/* ======================================================== */}
       {activeTab === "navbar" && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <h2 className="text-base font-black text-gray-900 border-b pb-3">Top Navbar Configuration</h2>
@@ -199,7 +218,134 @@ export default function HeaderFooterCms() {
         </div>
       )}
 
-      {/* TAB 2: FOOTER BRAND & DESCRIPTION (Requested Dynamic Section) */}
+      {/* ======================================================== */}
+      {/* TAB 2: BANK UPI & QR CODE SETTINGS                       */}
+      {/* ======================================================== */}
+      {activeTab === "payment-qr" && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div>
+              <h2 className="text-base font-black text-gray-900 flex items-center space-x-2">
+                <QrCode className="w-5 h-5 text-pink-600" />
+                <span>Bank Account UPI & Scanner Settings</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Bank change hone par yahan se apna naya UPI ID, Name aur QR Code update karein.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold">
+            <div>
+              <label className="block text-gray-700 mb-1">Receiver UPI ID / VPA *</label>
+              <input
+                type="text"
+                placeholder="e.g. juhip2019@okaxis"
+                value={formData.paymentGateway?.upiId || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    paymentGateway: { ...formData.paymentGateway, upiId: e.target.value }
+                  })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-pink-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-1">Merchant / Account Holder Name *</label>
+              <input
+                type="text"
+                placeholder="e.g. Juhi Pafhj"
+                value={formData.paymentGateway?.merchantName || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    paymentGateway: { ...formData.paymentGateway, merchantName: e.target.value }
+                  })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-pink-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-1">Cash on Delivery (COD) Minimum Amount (₹)</label>
+              <input
+                type="number"
+                placeholder="5000"
+                value={formData.paymentGateway?.codMinAmount ?? 5000}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    paymentGateway: { ...formData.paymentGateway, codMinAmount: Number(e.target.value) }
+                  })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-pink-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-1">Payment Verification Warning Note</label>
+              <input
+                type="text"
+                placeholder="Alert note for users before scanning..."
+                value={formData.paymentGateway?.verificationNote || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    paymentGateway: { ...formData.paymentGateway, verificationNote: e.target.value }
+                  })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-pink-500 font-normal"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2 border-t">
+            <label className="block text-xs font-bold text-gray-700">Custom Bank QR Code Image (Optional)</label>
+            <p className="text-[11px] text-gray-400">
+              Agar aap apna official standalone Bank/GPay QR image lagana chahte hain, toh yahan upload karein. Khali chhodne par system automatic live QR generate karega.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 overflow-hidden flex items-center justify-center shrink-0">
+                {paymentQrFile ? (
+                  <img src={URL.createObjectURL(paymentQrFile)} alt="QR Preview" className="w-full h-full object-contain" />
+                ) : formData.paymentGateway?.qrImageUrl ? (
+                  <img src={getImageUrl(formData.paymentGateway.qrImageUrl)} alt="QR" className="w-full h-full object-contain" />
+                ) : (
+                  <QrCode className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+
+              <div className="flex-1 w-full space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPaymentQrFile(e.target.files[0])}
+                  className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer"
+                />
+                <input
+                  type="url"
+                  placeholder="Or enter direct external QR image URL..."
+                  value={formData.paymentGateway?.qrImageUrl || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      paymentGateway: { ...formData.paymentGateway, qrImageUrl: e.target.value }
+                    })
+                  }
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:border-pink-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 3: FOOTER BRAND, LOGO & DESCRIPTION                  */}
+      {/* ======================================================== */}
       {activeTab === "footer-brand" && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <h2 className="text-base font-black text-gray-900 border-b pb-3">Footer Brand, Logo & Description</h2>
@@ -280,7 +426,9 @@ export default function HeaderFooterCms() {
         </div>
       )}
 
-      {/* TAB 3: FOOTER TRUST GUARENTEES */}
+      {/* ======================================================== */}
+      {/* TAB 4: FOOTER TRUST GUARANTEES                           */}
+      {/* ======================================================== */}
       {activeTab === "footer-trust" && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <h2 className="text-base font-black text-gray-900 border-b pb-3">Trust Badges (Top 4 Boxes Strip)</h2>
@@ -324,7 +472,7 @@ export default function HeaderFooterCms() {
                       updated[idx].iconKey = e.target.value;
                       setFormData({ ...formData, footer: { ...formData.footer, trustGuarantees: updated } });
                     }}
-                    className="w-full bg-white border border-gray-200 rounded-xl p-2 font-bold"
+                    className="w-full bg-white border border-gray-200 rounded-xl p-2 font-bold cursor-pointer"
                   >
                     <option value="truck">Delivery Truck (Truck)</option>
                     <option value="shield">Warranty Shield (ShieldCheck)</option>
@@ -338,7 +486,9 @@ export default function HeaderFooterCms() {
         </div>
       )}
 
-      {/* TAB 4: CUSTOMER DESK & SOCIALS */}
+      {/* ======================================================== */}
+      {/* TAB 5: CUSTOMER DESK & SOCIAL PROFILES                   */}
+      {/* ======================================================== */}
       {activeTab === "footer-info" && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <h2 className="text-base font-black text-gray-900 border-b pb-3">Support Contacts & Social Profiles</h2>
@@ -454,7 +604,9 @@ export default function HeaderFooterCms() {
         </div>
       )}
 
-      {/* TAB 5: QUICK LINKS, LEGAL & BADGES */}
+      {/* ======================================================== */}
+      {/* TAB 6: QUICK LINKS, LEGAL & BADGES                       */}
+      {/* ======================================================== */}
       {activeTab === "footer-legal" && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b pb-3">

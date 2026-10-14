@@ -5,12 +5,12 @@ const { getSettings, updateSettings } = require("../controllers/settingsControll
 
 router.get("/", getSettings);
 
-// Multiple named files support (navbarLogo, footerLogo)
 router.put(
   "/",
   upload.fields([
     { name: "navbarLogo", maxCount: 1 },
-    { name: "footerLogo", maxCount: 1 }
+    { name: "footerLogo", maxCount: 1 },
+    { name: "paymentQrFile", maxCount: 1 } // <-- Dynamic QR upload support
   ]),
   updateSettings
 );

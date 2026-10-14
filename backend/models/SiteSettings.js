@@ -8,6 +8,20 @@ const siteSettingsSchema = new mongoose.Schema(
       logoUrl: { type: String, default: "" },
       showSparkleIcon: { type: Boolean, default: true }
     },
+    // --- DYNAMIC PAYMENT QR & UPI SETTINGS ---
+    paymentGateway: {
+      upiId: { type: String, default: "juhip2019@okaxis" },
+      merchantName: { type: String, default: "Juhi Pafhj" },
+      qrImageUrl: { type: String, default: "" }, // Agar custom bank/GPay QR image upload ho
+      verificationNote: {
+        type: String,
+        default:
+          "Payment karte waqt verify karein ki receiver UPI ID sahi display ho rahi ho."
+      },
+      codMinAmount: { type: Number, default: 5000 },
+      isCodEnabled: { type: Boolean, default: true },
+      isUpiEnabled: { type: Boolean, default: true }
+    },
     footer: {
       brandName: { type: String, default: "KHASTORE" },
       brandSubtitle: { type: String, default: "Premium Deals 2026" },
@@ -15,7 +29,7 @@ const siteSettingsSchema = new mongoose.Schema(
       description: {
         type: String,
         default:
-          "Direct factory pricing aur authentic lifestyle & electronic gadgets ka India ka leading online hub. High quality, instant pan-India dispatch ke sath."
+          "Direct factory pricing aur authentic lifestyle & electronic gadgets ka India ka leading online hub."
       },
       trustGuarantees: {
         type: [
@@ -27,30 +41,10 @@ const siteSettingsSchema = new mongoose.Schema(
           }
         ],
         default: [
-          {
-            title: "Free Express Delivery",
-            subtitle: "All India over ₹499",
-            iconKey: "truck",
-            gradient: "from-violet-600 to-indigo-600"
-          },
-          {
-            title: "100% Genuine Items",
-            subtitle: "Direct Brand Warranty",
-            iconKey: "shield",
-            gradient: "from-pink-500 to-rose-600"
-          },
-          {
-            title: "7-Day Free Returns",
-            subtitle: "No questions asked",
-            iconKey: "rotate",
-            gradient: "from-amber-500 to-orange-600"
-          },
-          {
-            title: "Dedicated Support",
-            subtitle: "24/7 Fast assistance",
-            iconKey: "headphones",
-            gradient: "from-emerald-500 to-teal-600"
-          }
+          { title: "Free Express Delivery", subtitle: "All India over ₹499", iconKey: "truck", gradient: "from-violet-600 to-indigo-600" },
+          { title: "100% Genuine Items", subtitle: "Direct Brand Warranty", iconKey: "shield", gradient: "from-pink-500 to-rose-600" },
+          { title: "7-Day Free Returns", subtitle: "No questions asked", iconKey: "rotate", gradient: "from-amber-500 to-orange-600" },
+          { title: "Dedicated Support", subtitle: "24/7 Fast assistance", iconKey: "headphones", gradient: "from-emerald-500 to-teal-600" }
         ]
       },
       socialLinks: {
@@ -74,10 +68,7 @@ const siteSettingsSchema = new mongoose.Schema(
       },
       newsletter: {
         title: { type: String, default: "Exclusive Offers" },
-        subtitle: {
-          type: String,
-          default: "Festive discounts aur new drops ki instant notifications payein."
-        }
+        subtitle: { type: String, default: "Festive discounts aur new drops ki instant notifications payein." }
       },
       copyrightText: { type: String, default: "© 2026 KHASTORE. All rights reserved." },
       heartNotice: { type: String, default: "for direct Indian shoppers" },

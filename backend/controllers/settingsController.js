@@ -1,11 +1,9 @@
 const SiteSettings = require("../models/SiteSettings");
 
-// 1. Get Settings (Public)
 exports.getSettings = async (req, res) => {
   try {
     let settings = await SiteSettings.findOne();
     if (!settings) {
-      // First time initial default instance create karein
       settings = await SiteSettings.create({});
     }
     res.status(200).json({ success: true, data: settings });
@@ -14,7 +12,6 @@ exports.getSettings = async (req, res) => {
   }
 };
 
-// 2. Update Settings (Admin Only)
 exports.updateSettings = async (req, res) => {
   try {
     let settings = await SiteSettings.findOne();
@@ -22,15 +19,20 @@ exports.updateSettings = async (req, res) => {
       settings = new SiteSettings({});
     }
 
-    // Handle parsed JSON payload if sent via FormData
     const body = req.body.settingsData ? JSON.parse(req.body.settingsData) : req.body;
 
-    // Check if new navbar/footer logo uploaded via multer
-    if (req.files && req.files.navbarLogo) {
-      body.navbar.logoUrl = `/uploads/products/${req.files.navbarLogo[0].filename}`;
-    }
-    if (req.files && req.files.footerLogo) {
-      body.footer.logoUrl = `/uploads/products/${req.files.footerLogo[0].filename}`;
+    // Handle uploaded images (Navbar logo, Footer logo, Custom QR image)
+    if (req.files) {
+      if (req.files.navbarLogo) {
+        body.navbar.logoUrl = `/uploads/products/${req.files.navbarLogo[0].filename}`;
+      }
+      if (req.files.footerLogo) {
+        body.footer.logoUrl = `/uploads/products/${req.files.footerLogo[0].filename}`;
+      }
+      if (req.files.paymentQrFile) {
+        if (!body.paymentGateway) body.paymentGateway = {};
+        body.paymentGateway.qrImageUrl = `/uploads/products/${req.files.paymentQrFile[0].filename}`;
+      }
     }
 
     Object.assign(settings, body);
@@ -38,7 +40,7 @@ exports.updateSettings = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Navbar and Footer configuration updated successfully",
+      message: "Site settings & Payment QR updated successfully!",
       data: settings
     });
   } catch (error) {
