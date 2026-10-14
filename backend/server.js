@@ -19,6 +19,11 @@ const contactRoutes = require("./routes/contactRoutes");
 const aboutRoutes = require("./routes/aboutRoutes");
 const productRoutes = require("./routes/productRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const orderRoutes = require("./routes/orderRoutes");
+
+
+
+
 // Database initialization
 connectDB();
 
@@ -104,6 +109,9 @@ app.use("/api/v1/contact", contactRoutes);
 app.use("/api/v1/about", aboutRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/settings", settingsRoutes);
+app.use("/api/v1/orders", orderRoutes);
+
+
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date() });

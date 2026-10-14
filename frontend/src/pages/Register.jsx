@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import API from "../api/axios";
+import { useSettings } from "../context/SettingsContext";
 import OtpModal from "../components/OtpModal";
 
 export default function Register() {
@@ -36,7 +37,12 @@ export default function Register() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
+  
+  const { settings } = useSettings();
   const navigate = useNavigate();
+
+  // Dynamic store name from Navbar/Site Settings
+  const storeName = settings?.navbar?.brandName || "KHASTORE";
 
   const indianStates = [
     "Uttar Pradesh",
@@ -128,10 +134,10 @@ export default function Register() {
             <Sparkles className="w-6 h-6 animate-pulse" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">
-            Naya Account Banayein
+            {storeName} Par Naya Account Banayein
           </h2>
           <p className="text-xs text-gray-500">
-            Apni details enter karein aur instant doorstep delivery & reward discounts payein.
+            Apni details enter karein aur instant doorstep delivery & exclusive reward discounts payein.
           </p>
         </div>
 
@@ -308,7 +314,7 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition"
+                  className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -333,7 +339,7 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition"
+                  className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition cursor-pointer"
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -346,7 +352,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 hover:from-violet-700 hover:via-pink-700 hover:to-amber-600 text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-pink-500/30 active:scale-95 transition-all flex items-center justify-center space-x-2"
+              className="w-full py-3.5 bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-pink-500/30 active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
             >
               {isLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -375,7 +381,6 @@ export default function Register() {
         </div>
       </div>
 
-      {/* 3-Minute Registration OTP Modal */}
       {showOtpModal && (
         <OtpModal
           email={formData.email}

@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  ShoppingCart
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
@@ -31,6 +32,7 @@ export default function AdminLayout({ children }) {
 
   const navItems = [
     { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Orders & Delivery CRM", to: "/admin/orders", icon: ShoppingCart },
     { label: "Products CMS", to: "/admin/products", icon: Package },
     { label: "Header & Footer CMS", to: "/admin/header-footer-cms", icon: Sparkles },
     { label: "About Us CMS", to: "/admin/about-cms", icon: Info },

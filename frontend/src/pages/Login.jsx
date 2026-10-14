@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
 import API from "../api/axios";
 import OtpModal from "../components/OtpModal";
 
@@ -24,7 +25,11 @@ export default function Login() {
   const [showOtpModal, setShowOtpModal] = useState(false);
 
   const { loginUser, verifyLoginOtp, handleGoogleLogin } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
+
+  // Dynamic store name from Navbar/Site Settings
+  const storeName = settings?.navbar?.brandName || "KHASTORE";
 
   // Step 1: Submit Credentials & Request Login OTP
   const handleLoginSubmit = async (e) => {
@@ -34,7 +39,7 @@ export default function Login() {
 
     try {
       const res = await loginUser(email, password);
-      if (res.data.success) {
+      if (res.data?.success) {
         setShowOtpModal(true);
       }
     } catch (err) {
@@ -80,7 +85,6 @@ export default function Login() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 relative overflow-hidden bg-gradient-to-br from-violet-50 via-pink-50/50 to-amber-50/40">
       <div className="relative w-full max-w-md bg-white/85 backdrop-blur-xl border border-white/80 rounded-3xl p-6 sm:p-9 shadow-2xl shadow-pink-500/10">
-        
         <div className="text-center space-y-2 mb-6">
           <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 text-white shadow-lg shadow-pink-500/30">
             <Sparkles className="w-6 h-6 animate-pulse" />
@@ -89,7 +93,7 @@ export default function Login() {
             Welcome Back!
           </h2>
           <p className="text-xs text-gray-500">
-            KHASTORE account me log in karke 2-step verification complete karein.
+            {storeName} account me log in karke 2-step verification complete karein.
           </p>
         </div>
 
@@ -159,7 +163,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition"
+                className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -169,7 +173,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-pink-500/30 active:scale-95 transition-all flex items-center justify-center space-x-2"
+            className="w-full py-3.5 bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-extrabold rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-pink-500/30 active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -196,7 +200,6 @@ export default function Login() {
         </div>
       </div>
 
-      {/* 3-Minute Login OTP Verification Modal */}
       {showOtpModal && (
         <OtpModal
           email={email}

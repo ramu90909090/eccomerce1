@@ -28,7 +28,7 @@ import ContactPageCms from "./pages/admin/ContactPageCms";
 import ContactInquiries from "./pages/admin/ContactInquiries";
 import ManageProducts from "./pages/admin/ManageProducts";
 import HeaderFooterCms from "./pages/admin/HeaderFooterCms";
-
+import AdminOrders from "./pages/admin/AdminOrders";
 
 export default function App() {
   return (
@@ -53,7 +53,7 @@ export default function App() {
               <Route path="contact-cms" element={<ContactPageCms />} />
               <Route path="contact-inquiries" element={<ContactInquiries />} />
              <Route path="header-footer-cms" element={<HeaderFooterCms />} />
-
+              <Route path="orders" element={<AdminOrders />} />
             </Route>
 
             {/* 2. Public Storefront Layout */}

@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Otp = require("../models/Otp");
+const SiteSettings = require("../models/SiteSettings");
 const generateOtp = require("../utils/generateOtp");
 const sendEmail = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
@@ -10,6 +11,16 @@ const { OAuth2Client } = require("google-auth-library");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_default_secret_key_2026";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+
+// Helper function to dynamically fetch Navbar Brand Name from SiteSettings
+const getDynamicStoreName = async () => {
+  try {
+    const settings = await SiteSettings.findOne();
+    return settings?.navbar?.brandName || "KHASTORE";
+  } catch (err) {
+    return "KHASTORE";
+  }
+};
 
 // ==========================================
 // 1. REGISTER (Initial Data Validation & Send OTP)
@@ -31,6 +42,9 @@ exports.register = async (req, res) => {
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
+    // Fetch dynamic store name
+    const storeName = await getDynamicStoreName();
+
     // Purane registration OTPs delete karke naya create karein
     await Otp.deleteMany({ email: cleanEmail, purpose: "registration" });
     await Otp.create({ email: cleanEmail, otp: hashedOtp, purpose: "registration" });
@@ -38,10 +52,10 @@ exports.register = async (req, res) => {
     // Send OTP via Email
     await sendEmail({
       to: cleanEmail,
-      subject: "Your Registration OTP - KHASTORE",
+      subject: `Your Registration OTP - ${storeName}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #ec4899;">KHASTORE Account Verification</h2>
+          <h2 style="color: #ec4899;">${storeName} Account Verification</h2>
           <p>Apna naya account verify karne ke liye niche diya gaya OTP enter karein:</p>
           <div style="font-size: 26px; font-weight: bold; color: #7c3aed; letter-spacing: 4px; margin: 16px 0;">
             ${otp}
@@ -160,15 +174,18 @@ exports.login = async (req, res) => {
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
+    // Fetch dynamic store name
+    const storeName = await getDynamicStoreName();
+
     await Otp.deleteMany({ email: cleanEmail, purpose: "login" });
     await Otp.create({ email: cleanEmail, otp: hashedOtp, purpose: "login" });
 
     await sendEmail({
       to: cleanEmail,
-      subject: "Login Verification OTP - KHASTORE",
+      subject: `Login Verification OTP - ${storeName}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #ec4899;">KHASTORE Secure Login</h2>
+          <h2 style="color: #ec4899;">${storeName} Secure Login</h2>
           <p>Login complete karne ke liye 2-Step verification OTP:</p>
           <div style="font-size: 26px; font-weight: bold; color: #7c3aed; letter-spacing: 4px; margin: 16px 0;">
             ${otp}
@@ -260,15 +277,18 @@ exports.resendOtp = async (req, res) => {
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
+    // Fetch dynamic store name
+    const storeName = await getDynamicStoreName();
+
     await Otp.deleteMany({ email: cleanEmail, purpose });
     await Otp.create({ email: cleanEmail, otp: hashedOtp, purpose });
 
     await sendEmail({
       to: cleanEmail,
-      subject: `Resent OTP [${purpose.toUpperCase()}] - KHASTORE`,
+      subject: `Resent OTP [${purpose.toUpperCase()}] - ${storeName}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #ec4899;">Fresh Security OTP</h2>
+          <h2 style="color: #ec4899;">${storeName} Fresh Security OTP</h2>
           <p>Aapka naya verification code:</p>
           <div style="font-size: 26px; font-weight: bold; color: #7c3aed; letter-spacing: 4px; margin: 16px 0;">
             ${otp}
@@ -301,15 +321,18 @@ exports.forgotPassword = async (req, res) => {
     const otp = generateOtp();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
+    // Fetch dynamic store name
+    const storeName = await getDynamicStoreName();
+
     await Otp.deleteMany({ email: cleanEmail, purpose: "forgot_password" });
     await Otp.create({ email: cleanEmail, otp: hashedOtp, purpose: "forgot_password" });
 
     await sendEmail({
       to: cleanEmail,
-      subject: "Password Reset OTP - KHASTORE",
+      subject: `Password Reset OTP - ${storeName}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #ec4899;">Password Reset Request</h2>
+          <h2 style="color: #ec4899;">${storeName} Password Reset Request</h2>
           <p>Password reset verify karne ke liye code:</p>
           <div style="font-size: 26px; font-weight: bold; color: #7c3aed; letter-spacing: 4px; margin: 16px 0;">
             ${otp}
@@ -354,7 +377,6 @@ exports.resetPassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "User account nahi mila." });
     }
 
-    // Assigning raw password will trigger userSchema.pre('save') hashing automatically
     user.password = newPassword;
     await user.save();
 

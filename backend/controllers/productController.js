@@ -19,9 +19,12 @@ const removeLocalFiles = (imagePaths = []) => {
 // 1. Get All Products (Latest First by default)
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, search, minRating, maxPrice, sortBy, trending } = req.query;
+    const { category, search, minRating, maxPrice, sortBy, trending , includeOutOfStock} = req.query;
     let query = {};
 
+    if (includeOutOfStock !== "true") {
+      query.stock = { $gt: 0 };
+    }
     if (category && category !== "All") {
       query.category = category;
     }

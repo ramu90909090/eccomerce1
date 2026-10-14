@@ -4,11 +4,21 @@ import API from "../api/axios";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  // Safe initial state evaluation (Prevents "undefined is not valid JSON" crash)
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("user_info");
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem("user_info");
+      if (!saved || saved === "undefined" || saved === "null") {
+        return null;
+      }
+      return JSON.parse(saved);
+    } catch (err) {
+      console.error("Local user parse error, clearing invalid storage:", err);
+      localStorage.removeItem("user_info");
+      return null;
+    }
   });
-  
+
   // Initial loading ko true rakha hai taaki page refresh hone par seedha redirect na ho
   const [loading, setLoading] = useState(true);
 
@@ -17,9 +27,15 @@ export const AuthProvider = ({ children }) => {
     const fetchLatestProfile = async () => {
       try {
         const res = await API.get("/auth/profile");
-        if (res.data?.success) {
-          setUser(res.data.user);
-          localStorage.setItem("user_info", JSON.stringify(res.data.user));
+        // Support both response formats: res.data.user or res.data.data
+        const userData = res.data?.user || res.data?.data;
+
+        if (res.data?.success && userData) {
+          setUser(userData);
+          localStorage.setItem("user_info", JSON.stringify(userData));
+        } else {
+          setUser(null);
+          localStorage.removeItem("user_info");
         }
       } catch (err) {
         // Token invalid ya expired hone par session clear karein
@@ -43,9 +59,11 @@ export const AuthProvider = ({ children }) => {
   // 2. Verify Login OTP & Set Session
   const verifyLoginOtp = async (email, otp) => {
     const res = await API.post("/auth/verify-login-otp", { email, otp });
-    if (res.data?.success) {
-      setUser(res.data.user);
-      localStorage.setItem("user_info", JSON.stringify(res.data.user));
+    const userData = res.data?.user || res.data?.data;
+
+    if (res.data?.success && userData) {
+      setUser(userData);
+      localStorage.setItem("user_info", JSON.stringify(userData));
     }
     return res.data;
   };
@@ -53,9 +71,11 @@ export const AuthProvider = ({ children }) => {
   // 3. Google OAuth Login
   const handleGoogleLogin = async (credential) => {
     const res = await API.post("/auth/google", { credential });
-    if (res.data?.success) {
-      setUser(res.data.user);
-      localStorage.setItem("user_info", JSON.stringify(res.data.user));
+    const userData = res.data?.user || res.data?.data;
+
+    if (res.data?.success && userData) {
+      setUser(userData);
+      localStorage.setItem("user_info", JSON.stringify(userData));
     }
     return res.data;
   };
@@ -76,9 +96,11 @@ export const AuthProvider = ({ children }) => {
   // 5. Update Profile Details
   const updateProfile = async (updatedData) => {
     const res = await API.put("/auth/profile", updatedData);
-    if (res.data?.success) {
-      setUser(res.data.user);
-      localStorage.setItem("user_info", JSON.stringify(res.data.user));
+    const userData = res.data?.user || res.data?.data;
+
+    if (res.data?.success && userData) {
+      setUser(userData);
+      localStorage.setItem("user_info", JSON.stringify(userData));
     }
     return res.data;
   };

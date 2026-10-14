@@ -20,7 +20,7 @@ const sendEmail = async ({ to, subject, html }) => {
     });
 
     const mailOptions = {
-      from: `"KHASTORE Security" <${emailUser}>`,
+      from: `"UPRCART Security" <${emailUser}>`,
       to,
       subject,
       html
