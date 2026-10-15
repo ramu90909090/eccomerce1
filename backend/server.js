@@ -20,7 +20,7 @@ const aboutRoutes = require("./routes/aboutRoutes");
 const productRoutes = require("./routes/productRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const orderRoutes = require("./routes/orderRoutes");
-
+const userRoutes = require("./routes/userRoutes");
 
 
 
@@ -110,7 +110,7 @@ app.use("/api/v1/about", aboutRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/settings", settingsRoutes);
 app.use("/api/v1/orders", orderRoutes);
-
+app.use("/api/v1/users", userRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

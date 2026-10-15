@@ -33,6 +33,8 @@ import ContactInquiries from "./pages/admin/ContactInquiries";
 import ManageProducts from "./pages/admin/ManageProducts";
 import HeaderFooterCms from "./pages/admin/HeaderFooterCms";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminUsers from "./pages/admin/AdminUsers";
+
 
 export default function App() {
   return (
@@ -52,13 +54,15 @@ export default function App() {
               >
                 <Route index element={<AdminDashboard />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
                 <Route path="products" element={<ManageProducts />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="header-footer-cms" element={<HeaderFooterCms />} />
                 <Route path="about-cms" element={<AboutPageCms />} />
                 <Route path="contact-cms" element={<ContactPageCms />} />
                 <Route path="contact-inquiries" element={<ContactInquiries />} />
-              </Route>
+             
+             </Route>
 
               {/* 2. Public & User Storefront Layout */}
               <Route

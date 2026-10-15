@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import API from "../api/axios";
+import { getImageUrl } from "../utils/productUtils";
 
 const SettingsContext = createContext();
 
@@ -88,6 +89,29 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  // ==============================================================
+  // DYNAMIC TAB TITLE & FAVICON SYNCHRONIZATION
+  // ==============================================================
+  useEffect(() => {
+    if (settings?.navbar) {
+      // 1. Dynamic Browser Title (Navbar Brand Name + Subtitle)
+      const name = settings.navbar.brandName || "KHASTORE";
+      const subtitle = settings.navbar.brandSubtitle ? ` - ${settings.navbar.brandSubtitle}` : "";
+      document.title = `${name}${subtitle}`;
+
+      // 2. Dynamic Browser Favicon (Navbar Logo Image)
+      if (settings.navbar.logoUrl) {
+        let link = document.querySelector("link[rel*='icon']");
+        if (!link) {
+          link = document.createElement("link");
+          link.rel = "icon";
+          document.head.appendChild(link);
+        }
+        link.href = getImageUrl(settings.navbar.logoUrl);
+      }
+    }
+  }, [settings]);
 
   return (
     <SettingsContext.Provider value={{ settings, setSettings, fetchSettings, loading }}>

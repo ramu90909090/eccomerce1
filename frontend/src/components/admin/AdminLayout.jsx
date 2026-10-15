@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Link, Outlet } from "react-router-dom";
 import {
+  Users,
   LayoutDashboard,
   Layers,
   Info,
@@ -32,6 +33,7 @@ export default function AdminLayout({ children }) {
 
   const navItems = [
     { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Users & Customers CRM", to: "/admin/users", icon: Users }, // <-- Naya Tab
     { label: "Orders & Delivery CRM", to: "/admin/orders", icon: ShoppingCart },
     { label: "Products CMS", to: "/admin/products", icon: Package },
     { label: "Header & Footer CMS", to: "/admin/header-footer-cms", icon: Sparkles },
