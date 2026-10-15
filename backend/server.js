@@ -2,7 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
 
-// Load .env
+// Load Environment Variables
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 const cors = require("cors");
@@ -13,7 +13,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const hpp = require("hpp");
 const connectDB = require("./config/db");
 
-// Routes
+// Routes Imports
 const authRoutes = require("./routes/authRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const aboutRoutes = require("./routes/aboutRoutes");
@@ -21,15 +21,18 @@ const productRoutes = require("./routes/productRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const userRoutes = require("./routes/userRoutes");
+const whatsappRoutes = require("./routes/whatsappRoutes");
 
+// WhatsApp Engine & Queue Services
+const whatsappService = require("./services/whatsappService");
+const { processQueue } = require("./services/queueService");
 
-
-// Database initialization
+// Database Initialization
 connectDB();
 
 const app = express();
 
-// 1. Security Headers with Cross-Origin Resource Policy for Images
+// 1. Security Headers with Cross-Origin Resource Policy for Uploaded Images
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -73,7 +76,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 6. Express 5 Safe XSS Sanitizer
+// 6. Safe XSS Sanitizer
 const sanitizeString = (str) => {
   if (typeof str !== "string") return str;
   return str.replace(/[<>]/g, "");
@@ -100,10 +103,10 @@ app.use((req, res, next) => {
 // 7. Parameter Pollution Prevention
 app.use(hpp());
 
-// 8. Static Files Serving (Images access setup)
+// 8. Static Files Serving (Product images, logos & custom QR images)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// 9. Routes Mounting
+// 9. API Routes Mounting
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/contact", contactRoutes);
 app.use("/api/v1/about", aboutRoutes);
@@ -111,13 +114,14 @@ app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/settings", settingsRoutes);
 app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/whatsapp", whatsappRoutes);
 
-// Health check
+// 10. Health Check Endpoint
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date() });
 });
 
-// Global Error Handler
+// 11. Global Error Handler
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err.stack);
   res.status(err.status || 500).json({
@@ -129,8 +133,14 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
+// 12. Server Startup & WhatsApp Service Hook
 app.listen(PORT, () => {
   console.log(`🚀 Server running in ${NODE_ENV} mode on port ${PORT}`);
   console.log(`📁 Static files serving at: http://localhost:${PORT}/uploads`);
   console.log(`🔗 Allowed Client: ${clientUrl}`);
+
+  // Server start hone ke sath WhatsApp Engine initialize karein aur pending/failed queue auto-resume karein
+  whatsappService.initializeWhatsApp(() => {
+    processQueue();
+  });
 });

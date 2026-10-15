@@ -34,7 +34,7 @@ import ManageProducts from "./pages/admin/ManageProducts";
 import HeaderFooterCms from "./pages/admin/HeaderFooterCms";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminUsers from "./pages/admin/AdminUsers";
-
+import AdminWhatsappLogs from "./pages/admin/AdminWhatsappLogs";
 
 export default function App() {
   return (
@@ -61,7 +61,7 @@ export default function App() {
                 <Route path="about-cms" element={<AboutPageCms />} />
                 <Route path="contact-cms" element={<ContactPageCms />} />
                 <Route path="contact-inquiries" element={<ContactInquiries />} />
-             
+             <Route path="whatsapp" element={<AdminWhatsappLogs />} />
              </Route>
 
               {/* 2. Public & User Storefront Layout */}

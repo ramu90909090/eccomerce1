@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { NavLink, Link, Outlet } from "react-router-dom";
 import {
-  Users,
   LayoutDashboard,
   Layers,
   Info,
@@ -13,7 +12,9 @@ import {
   Menu,
   X,
   Sparkles,
-  ShoppingCart
+  Users,
+  ShoppingCart,
+  MessageSquareText
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
@@ -25,7 +26,7 @@ export default function AdminLayout({ children }) {
   const { user } = useAuth();
   const { settings } = useSettings();
 
-  // Dynamic Navbar branding values for Admin Panel
+  // Dynamic branding from navbar settings
   const navBrand = settings?.navbar || {};
   const brandName = navBrand.brandName || "KHASTORE";
   const brandSubtitle = navBrand.brandSubtitle || "Admin Studio";
@@ -33,17 +34,18 @@ export default function AdminLayout({ children }) {
 
   const navItems = [
     { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
-    { label: "Users & Customers CRM", to: "/admin/users", icon: Users }, // <-- Naya Tab
     { label: "Orders & Delivery CRM", to: "/admin/orders", icon: ShoppingCart },
+    { label: "Users & Customers CRM", to: "/admin/users", icon: Users },
+    { label: "WhatsApp Automation", to: "/admin/whatsapp", icon: MessageSquareText },
     { label: "Products CMS", to: "/admin/products", icon: Package },
-    { label: "Header & Footer CMS", to: "/admin/header-footer-cms", icon: Sparkles },
+    { label: "Header, Footer & QR CMS", to: "/admin/header-footer-cms", icon: Sparkles },
     { label: "About Us CMS", to: "/admin/about-cms", icon: Info },
     { label: "Contact Us CMS", to: "/admin/contact-cms", icon: Layers },
     { label: "Contact CRM Tickets", to: "/admin/contact-inquiries", icon: MessageSquare }
   ];
 
   const getLinkClasses = ({ isActive }) =>
-    `flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
+    `flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 shrink-0 ${
       isActive
         ? "bg-gradient-to-r from-violet-600 to-pink-600 text-white shadow-md shadow-pink-500/20"
         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -51,7 +53,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Backdrop Overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
@@ -59,63 +61,65 @@ export default function AdminLayout({ children }) {
         />
       )}
 
-      {/* Left Sidebar */}
+      {/* ========================================================================= */}
+      {/* FIXED SCROLLABLE LEFT SIDEBAR                                              */}
+      {/* ========================================================================= */}
       <aside
         className={`fixed lg:sticky top-0 h-screen z-50 bg-white border-r border-slate-200/80 transition-all duration-300 flex flex-col justify-between p-4 ${
           collapsed ? "w-20" : "w-64"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
-        <div className="space-y-6">
-          {/* Logo & Dynamic Brand Header */}
-          <div className="flex items-center justify-between px-1">
-            <Link to="/" className="flex items-center space-x-2.5 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[2px] shadow-md shrink-0">
-                <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center overflow-hidden">
-                  {logoUrl ? (
-                    <img
-                      src={getImageUrl(logoUrl)}
-                      alt={brandName}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <Sparkles className="w-5 h-5 text-pink-500" />
-                  )}
-                </div>
+        {/* 1. Header (Fixed at top of sidebar) */}
+        <div className="flex items-center justify-between px-1 pb-4 shrink-0 border-b border-slate-100">
+          <Link to="/" className="flex items-center space-x-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-pink-500 to-amber-400 p-[2px] shadow-md shrink-0">
+              <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center overflow-hidden">
+                {logoUrl ? (
+                  <img
+                    src={getImageUrl(logoUrl)}
+                    alt={brandName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <Sparkles className="w-5 h-5 text-pink-500" />
+                )}
               </div>
+            </div>
 
-              {!collapsed && (
-                <div className="min-w-0 flex-1">
-                  <span className="block font-black text-sm tracking-tight bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent truncate">
-                    {brandName}
-                  </span>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate -mt-0.5">
-                    {brandSubtitle}
-                  </span>
-                </div>
-              )}
-            </Link>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <span className="block font-black text-sm tracking-tight bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent truncate">
+                  {brandName}
+                </span>
+                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate -mt-0.5">
+                  {brandSubtitle}
+                </span>
+              </div>
+            )}
+          </Link>
 
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="hidden lg:flex p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 cursor-pointer"
-              title="Toggle Sidebar"
-            >
-              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-            </button>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="hidden lg:flex p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 cursor-pointer"
+            title="Toggle Sidebar"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
 
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="lg:hidden p-1.5 text-slate-500 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-1.5 text-slate-500 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* Navigation Links */}
+        {/* 2. Scrollable Navigation Menu (Overflow-y-auto prevents content cut-off) */}
+        <div className="flex-1 overflow-y-auto py-4 space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -135,8 +139,8 @@ export default function AdminLayout({ children }) {
           </nav>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="border-t border-slate-100 pt-3 space-y-2">
+        {/* 3. Sidebar Footer (Fixed at bottom) */}
+        <div className="border-t border-slate-100 pt-3 space-y-2 shrink-0">
           <Link
             to="/"
             target="_blank"
