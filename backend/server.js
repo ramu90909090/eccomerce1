@@ -121,7 +121,15 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date() });
 });
 
-// 11. Global Error Handler
+// 11. 404 Handler for Unhandled API Routes
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Requested API endpoint not found on this server."
+  });
+});
+
+// 12. Global Error Handler
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err.stack);
   res.status(err.status || 500).json({
@@ -133,13 +141,13 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-// 12. Server Startup & WhatsApp Service Hook
+// 13. Server Startup & WhatsApp Service Hook
 app.listen(PORT, () => {
   console.log(`🚀 Server running in ${NODE_ENV} mode on port ${PORT}`);
   console.log(`📁 Static files serving at: http://localhost:${PORT}/uploads`);
   console.log(`🔗 Allowed Client: ${clientUrl}`);
 
-  // Server start hone ke sath WhatsApp Engine initialize karein aur pending/failed queue auto-resume karein
+  // Server start hone par WhatsApp Engine initialize karein aur pending/failed queue resume karein
   whatsappService.initializeWhatsApp(() => {
     processQueue();
   });
